@@ -609,6 +609,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
 {
     bool blacklisted = false, whitelisted = false;
     int path_len = (int)strlen(query->path);
+    long suffix_pos = 0;
     // int proc_len = (int)strlen(query->process_name);
 
     IOLockLock(lock);
@@ -655,10 +656,13 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
                     }
                     break;
                 case(kFlockFlockPolicyTypePathSuffix):
-                    if (path_len < rpath_len)
+                    suffix_pos = path_len - rpath_len;
+                    if (rpath_len == 0 || suffix_pos < 0 || suffix_pos > strlen(query->path) || path_len <= rpath_len) {
                         match = false;
-                    if (strcmp(query->path + (path_len - rpath_len), rule->data.rulePath))
-                        match = false;
+                    } else {
+                        if (strcmp(query->path + (path_len - rpath_len), rule->data.rulePath))
+                            match = false;
+                    }
                     break;
                 default:
                     break;
