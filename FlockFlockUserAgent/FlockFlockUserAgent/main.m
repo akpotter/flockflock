@@ -265,17 +265,22 @@ int prompt_user_response(struct policy_query *query)
     popup_options = CFArrayCreateMutable(NULL, 0, NULL);
     
     /* find extension */
-    ptr = query->path + strlen(query->path)-1;
-    while(ptr >= query->path && ptr[0] != '/') {
-        ptr--;
+    extension = NULL;
+    if (strlen(query->path)>1) {
+        ptr = query->path + strlen(query->path)-1;
+        while(ptr != query->path && ptr[0] != '/') {
+            --ptr;
+        }
+        if (ptr) {
+            extension = strchr(ptr, '.');
+            if (extension) {
+                snprintf(option, sizeof(option), "All %s Files", extension);
+                param = CFStringCreateWithCString(NULL, option, kCFStringEncodingUTF8);
+                CFArrayAppendValue(popup_options, param);
+            }
+        }
     }
-    extension = strchr(ptr, '.');
-    if (extension) {
-        snprintf(option, sizeof(option), "All %s Files", extension);
-        param = CFStringCreateWithCString(NULL, option, kCFStringEncodingUTF8);
-        CFArrayAppendValue(popup_options, param);
-    }
-    
+
     snprintf(option, sizeof(option), "Only %s", query->path);
     param = CFStringCreateWithCString(NULL, option, kCFStringEncodingUTF8);
     CFArrayAppendValue(popup_options, param);
@@ -364,9 +369,14 @@ int prompt_user_response(struct policy_query *query)
         }
     } else {
         const char *path = (const char *)CFStringGetCStringPtr(selectedElement, kCFStringEncodingUTF8);
-        path = strchr(path, '/');
-        if (!path) {
+        printf("selected path: %s\n", path);
+        if (path == NULL || !strcmp(path, "Any Files")) {
             path = "/";
+        } else {
+            path = strchr(path, '/');
+            if (!path) {
+                path = "/";
+            }
         }
         strncpy(rule.rulePath, path, sizeof(rule.rulePath)-1);
         rule.ruleType = kFlockFlockPolicyTypePathPrefix;
