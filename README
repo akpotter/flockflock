@@ -16,22 +16,23 @@ One of the worst parts about being compromised is not knowing you're
 compromised, and having your data stolen by spyware, or hijacked by
 ransomware, only to find out about it too late. Most security researchers 
 aren't even 100% positive that their system hasn't been compromised. 
-Between spyware, ransomware, government hacking, and other threats, simply
-relying on file permissions and a secure execution environment no longer
-cuts it. There's a much needed solution for a tool that can keep your
-personal data protected from potentially malicious software that has
-rotted your system.
+Between spyware, ransomware, misbehaving applications, government hacking, 
+and other threats, simply relying on file permissions and a secure 
+execution environment no longer cuts it. There's a much needed solution 
+for a tool that can keep your personal data protected from potentially 
+malicious software that has rooted your system, or to monitor applications 
+that you have to have installed, but don't necessarily trust.
 
 WHAT IS FLOCKFLOCK?
 
 In Simple Terms:
 
 FlockFlock is a utility to help protect your personal files in OS X,
-to be able to tell if your system has been compromised, and to defend
-your personal data against ransomware, spyware, infection, and other 
-threats by preventing unauthorized processes (even by super user processes)
-from being able to open and read your files without your explicit 
-permission.
+to be able to tell if your system has been compromised, to ensure your
+applications are respecting your privacy, and to defend your personal data 
+against ransomware, spyware, infection, and other threats by preventing 
+unauthorized processes (even by super user processes) from being able to 
+open and read your files without your explicit permission.
 
 In short, FlockFlock is like the popular "Little Snitch" program, but for
 file access instead of network connections. It integrates with the
@@ -208,3 +209,5 @@ CHANGELOG
 0.0.7	Fixed a crash in the user agent when adding "Any Files"
 	Stability improvements for Sierra 
 0.0.8	Fixed a bug that led to a kernel panic
+0.0.9	Manicured display names for the user
+	Improvements to finding the application path icon

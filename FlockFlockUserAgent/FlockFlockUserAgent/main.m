@@ -237,7 +237,7 @@ int prompt_user_response(struct policy_query *query)
     CFStringRef selectedElement;
     SInt32 err, response;
     char *path, *extension, *ptr, option[PATH_MAX];
-    char *displayName;
+    char *displayName, *appPath, *p;
     int i;
     
     strncpy(proc_path, query->process_name, PATH_MAX-1);
@@ -252,7 +252,15 @@ int prompt_user_response(struct policy_query *query)
     displayName = strdup(query->process_name);
     if (displayName[strlen(displayName)-1] == '/')
         displayName[strlen(displayName)-1] = 0;
-    NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile: [ NSString stringWithUTF8String: displayName ] ];
+    p = strstr(displayName, "/ via ");
+    if (p) 
+        strcpy(p, p+1);
+    appPath = strdup(displayName);
+    p = strstr(appPath, " via ");
+    if (p) 
+        p[0] = 0;
+    
+    NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
     if (image != nil) { /* write to temp file, since we don't know where it came from */
         NSBitmapImageRep *imgRep = [ [ image representations ] objectAtIndex: 0 ];
         NSData *data = [ imgRep representationUsingType: NSPNGFileType properties: nil ];
