@@ -526,9 +526,14 @@ int com_zdziarski_driver_FlockFlock::ff_kauth_callback(kauth_cred_t credential, 
     
     /* shorten applications down to their .app package */
     if (!strncmp(proc_path, "/Applications/", 14)) {
-        char *dot = strchr(proc_path, '.');
-        if (dot && !strncmp(dot, ".app/", 5)) {
-            dot[5] = 0;
+        int i;
+        for(i = 14; i < strlen(proc_path); ++i) {
+            if (proc_path[i] == '.') {
+                char *ptr = proc_path+i;
+                if (!strncasecmp(ptr, ".app/", 5)) {
+                    ptr[5] = 0;
+                }
+            }
         }
     }
     
