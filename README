@@ -98,7 +98,7 @@ Reboot your computer into "Recovery Mode" by rebooting and holding in
 Command-R after the chime, until it boots to the recovery partition.
 Start a Terminal (Utilities->Terminal) and type:
 
-    csrutil enable --without-kext; reboot
+    csrutil enable --without kext; reboot
 
 After your system reboots, double click the FlockFlock.pkg file and follow 
 the installation process. A reboot is recommended after installation, but 
