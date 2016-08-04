@@ -30,11 +30,30 @@
 
 #define DEFAULT_FLOCKFLOCKRC "/Library/Application Support/FlockFlock/.flockflockrc"
 
-io_connect_t driverConnection;
-pthread_mutex_t lock, prompt_lock;
-unsigned char skey[SKEY_LEN];
+#ifndef DEBUG
+#define LOG( ... )
+#else
+void LOG_(const char *, const char *, ...);
+#define LOG(A...) LOG_(__PRETTY_FUNCTION__,  A)
+#endif
 
-struct ff_msg_header
+void
+LOG_ (const char *func, const char *err, ... )
+{
+    char debug_text[1024];
+    va_list args;
+    
+    va_start (args, err);
+    vsnprintf (debug_text, sizeof(debug_text), err, args);
+    va_end (args);
+    fprintf(stderr, "%s[%d] %s\n", func, getpid(), debug_text);
+}
+
+io_connect_t g_driverConnection;
+pthread_mutex_t g_sharedLock, g_promptLock;
+unsigned char g_skey[SKEY_LEN];
+
+struct ff_msg_header /* generic mach message to extract query type */
 {
     mach_msg_header_t header;
     uint32_t query_type;
@@ -53,7 +72,6 @@ enum FlockFlockPolicyClass get_class_by_name(const char *name) {
 }
 
 enum FlockFlockPolicyType get_type_by_name(const char *name) {
-    
     if (!strcmp(name, "prefix"))
         return kFlockFlockPolicyTypePathPrefix;
     if (!strcmp(name, "path"))
@@ -63,16 +81,16 @@ enum FlockFlockPolicyType get_type_by_name(const char *name) {
     return kFlockFlockPolicyTypeCount;
 }
 
-int send_configuration(io_connect_t connection)
+int sendConfiguration()
 {
     char path[PATH_MAX];
     char *home;
     struct _FlockFlockClientPolicy rule;
     
-    fprintf(stderr, "clearing old configuration\n");
-    kern_return_t kr = IOConnectCallMethod(connection, kFlockFlockRequestClearConfiguration, NULL, 0, skey, SKEY_LEN, NULL, NULL, NULL, NULL);
+    LOG("clearing old configuration");
+    kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestClearConfiguration, NULL, 0, g_skey, SKEY_LEN, NULL, NULL, NULL, NULL);
     if (kr != KERN_SUCCESS) {
-        fprintf(stderr, "unable to clear old configuration, aborting\n");
+        LOG("failed to clear old configuration, aborting");
         return E_FAIL;
     }
     
@@ -85,20 +103,20 @@ int send_configuration(io_connect_t connection)
     if (home) {
         snprintf(path, sizeof(path), "%s/.flockflockrc", home);
     } else {
-        fprintf(stderr, "unable to determine home directory\n");
+        LOG("unable to determine home directory");
         return errno;
     }
     
-    fprintf(stderr, "opening configuration file\n");
+    LOG("opening configuration file");
     FILE *file = fopen(path, "r");
     char buf[2048];
     if (!file) {
-        fprintf(stderr, "no user config found, opening default\n");
+        LOG("no user config found, opening default");
         file = fopen(DEFAULT_FLOCKFLOCKRC, "r");
         if (file) {
             FILE *out = fopen(path, "w");
             if (!out) {
-                fprintf(stderr, "unable to open '%s' for writing: %s (%d)\n", path, strerror(errno), errno);
+                LOG("unable to open '%s' for writing: %s (%d)", path, strerror(errno), errno);
                 return errno;
             }
             while((fgets(buf, sizeof(buf), file))!=NULL) {
@@ -110,12 +128,12 @@ int send_configuration(io_connect_t connection)
         }
         
         if (!file) {
-            fprintf(stderr, "unable to open '%s' for reading: %s (%d)\n", path, strerror(errno), errno);
+            LOG("unable to open '%s' for reading: %s (%d)", path, strerror(errno), errno);
             return errno;
         }
     }
 
-    fprintf(stderr, "reading config\n");
+    LOG("reading config");
     while((fgets(buf, sizeof(buf), file))!=NULL) {
         if (buf[0] == '#' || buf[0] == ';')
             continue;
@@ -129,7 +147,7 @@ int send_configuration(io_connect_t connection)
         pname = strtok(NULL, "\"");
         char *temp = strtok(NULL, "\t\n ");
         
-        printf("adding rule: class %s type %s path \"%s\" process name \"%s\" temporary %s\n", class, type, path, pname, temp);
+        LOG("adding rule: class %s type %s path \"%s\" process name \"%s\" temporary %s", class, type, path, pname, temp);
     
         rule.ruleClass = get_class_by_name(class);
         rule.ruleType = get_type_by_name(type);
@@ -153,40 +171,35 @@ int send_configuration(io_connect_t connection)
             rule.temporaryRule = 1;
         }
         
-        printf("class: %d\n", get_class_by_name(class));
-        printf("type : %d\n", get_type_by_name(type));
-        printf("path : %s\n", rule.rulePath);
-        printf("proc : %s (%d)\n", rule.processName, (int)strlen(rule.processName));
-        printf("temp : %d\n", rule.temporaryRule);
+        LOG("class: %d", get_class_by_name(class));
+        LOG("type : %d", get_type_by_name(type));
+        LOG("path : %s", rule.rulePath);
+        LOG("proc : %s (%d)", rule.processName, (int)strlen(rule.processName));
+        LOG("temp : %d", rule.temporaryRule);
         
-        memcpy(&rule.skey, skey, SKEY_LEN);
-        kern_return_t kr = IOConnectCallMethod(connection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
+        memcpy(&rule.skey, g_skey, SKEY_LEN);
+        kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
         if (kr == KERN_SUCCESS) {
-            printf("\tsuccess\n");
+            LOG("\tsuccess");
         } else {
-            printf("\tfailed\n");
+            LOG("\tfailed");
         }
     }
     fclose(file);
     return 0;
 }
 
-int start_filter(io_connect_t connection)
+int startFilter(io_connect_t connection)
 {
     return IOConnectCallMethod(connection, kFlockFlockRequestStartFilter, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
 }
 
-int stop_filter(io_connect_t connection)
+int stopFilter(io_connect_t connection)
 {
     return IOConnectCallMethod(connection, kFlockFlockRequestStopFilter, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
 }
 
-void stop(void) {
-    printf("stopping filter\n");
-    stop_filter(driverConnection);
-}
-
-int get_ppid(int pid)
+int getPPID(int pid)
 {
     struct kinfo_proc info;
     size_t length = sizeof(struct kinfo_proc);
@@ -198,7 +211,7 @@ int get_ppid(int pid)
     return info.kp_eproc.e_ppid;
 }
 
-int write_new_rule(struct _FlockFlockClientPolicy *rule)
+int commitNewRuleToDisk(struct _FlockFlockClientPolicy *rule)
 {
     char path[PATH_MAX];
     char rule_data[PATH_MAX * 4];
@@ -214,7 +227,7 @@ int write_new_rule(struct _FlockFlockClientPolicy *rule)
     if (home) {
         snprintf(path, sizeof(path), "%s/.flockflockrc", home);
     } else {
-        fprintf(stderr, "unable to determine home directory\n");
+        LOG("unable to determine home directory");
         return errno;
     }
     snprintf(rule_data, sizeof(rule_data), "%s %s \"%s\" \"%s\" no",
@@ -224,19 +237,19 @@ int write_new_rule(struct _FlockFlockClientPolicy *rule)
              (rule->rulePath[0]) ? rule->rulePath : "any",
              (rule->processName[0]) ? rule->processName : "any");
     
-    printf("ADD:\n%s\n", rule_data);
+    LOG("ADD:\n%s", rule_data);
     file = fopen(path, "a");
     if (file) {
-        fprintf(file, "%s\n", rule_data);
+        fprintf(file, "%s", rule_data);
         fclose(file);
     }
     return 0;
 }
 
-int prompt_user_response(struct policy_query *query)
+int promptUserForPermission(struct policy_query *query)
 {
     char proc_path[PATH_MAX], pproc_path[PATH_MAX];
-    int ppid = get_ppid(query->pid);
+    int ppid = getPPID(query->pid);
     struct _FlockFlockClientPolicy rule;
     char alert_message[4096];
     CFStringRef alert_str, param;
@@ -255,9 +268,9 @@ int prompt_user_response(struct policy_query *query)
     strncpy(proc_path, query->process_name, PATH_MAX-1);
     proc_pidpath(ppid, pproc_path, PATH_MAX);
     
-    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file '%s'\n\nApplication:\n%s (%d)\n\nParent:\n%s (%d)\n",
+    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file '%s'\n\nApplication:\n%s (%d)\n\nParent:\n%s (%d)",
              query->path, proc_path, query->pid, pproc_path, ppid);
-    printf("%s\n", alert_message);
+    LOG("%s", alert_message);
     alert_str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(alert_message), kCFStringEncodingMacRoman, kCFAllocatorDefault);
     
     /* manicure display names and pathname */
@@ -276,7 +289,7 @@ int prompt_user_response(struct policy_query *query)
         p[0] = 0;
     }
     
-    fprintf(stderr, "finding application icon\n");
+    LOG("finding application icon");
     NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
     if (image) { /* write to temp file, since we don't know where it came from */
         NSBitmapImageRep *imgRep = [ [ image representations ] objectAtIndex: 0 ];
@@ -306,6 +319,7 @@ int prompt_user_response(struct policy_query *query)
         }
     }
 
+    /* build directory hierarchy menu */
     snprintf(option, sizeof(option), "Only %s", query->path);
     param = CFStringCreateWithCString(NULL, option, kCFStringEncodingUTF8);
     CFArrayAppendValue(popup_options, param);
@@ -331,7 +345,7 @@ int prompt_user_response(struct policy_query *query)
     }
     free(path);
     
-    /* construct the popup */
+    /* construct the popup descriptors */
     radio_options = CFArrayCreateMutable(NULL, 0, NULL);
     CFArrayAppendValue(radio_options, CFSTR("Once"));
     CFArrayAppendValue(radio_options, CFSTR("Until Quit"));
@@ -363,8 +377,14 @@ int prompt_user_response(struct policy_query *query)
     notification = CFUserNotificationCreate(kCFAllocatorDefault, 60, kCFUserNotificationPlainAlertLevel | CFUserNotificationPopUpSelection((extension == NULL) ? 0 : 1) | kCFUserNotificationUseRadioButtonsFlag | CFUserNotificationCheckBoxChecked(1), &err, parameters);
     response = CFUserNotificationReceiveResponse(notification, 60, &responseFlags);
     
+    /* the rest of this rather lengthy subroutine is the response handling.
+     * we'll grab the selected buttons and menu items and determine whether to
+     * simply provide a reply to the driver, or to instruct it to add a rule to
+     * its live policy list, or additionally write the rule to .flockflockrc 
+     */
+    
     if (response != 0) {
-        printf("query timed out. denying access.\n");
+        LOG("query timed out. denying access.");
         return EACCES;
     }
     
@@ -374,7 +394,7 @@ int prompt_user_response(struct policy_query *query)
     } else if ((responseFlags & 0x03) == kCFUserNotificationAlternateResponse) {
         rule.ruleClass = kFlockFlockPolicyClassBlacklistAllMatching;
     } else {
-        printf("invalid response. denying access.\n");
+        LOG("invalid response. denying access.");
         return EACCES;
     }
     
@@ -394,7 +414,6 @@ int prompt_user_response(struct policy_query *query)
         }
     } else {
         const char *path = (const char *)CFStringGetCStringPtr(selectedElement, kCFStringEncodingUTF8);
-        printf("selected path: %s\n", path);
         if (path == NULL || !strcmp(path, "Any Files")) {
             path = "/";
         } else {
@@ -425,83 +444,83 @@ int prompt_user_response(struct policy_query *query)
     free(displayName);
     free(appPath);
     
-    /* add new rule to driver */
+    /* "Until Restart" */
     if (responseFlags & CFUserNotificationCheckBoxChecked(1)
         || responseFlags & CFUserNotificationCheckBoxChecked(2)
         || responseFlags & CFUserNotificationCheckBoxChecked(3))
     {
-        memcpy(&rule.skey, skey, SKEY_LEN);
-        int kr = IOConnectCallMethod(driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
+        memcpy(&rule.skey, g_skey, SKEY_LEN);
+        int kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
         if (kr == 0) {
-            printf("new rule added successfully\n");
+            LOG("new rule added successfully");
         } else {
-            printf("error occured while adding new rule: %d\n", kr);
+            LOG("error occured while adding new rule: %d", kr);
         }
         
+        /* "Forever" */
         if (responseFlags & CFUserNotificationCheckBoxChecked(3)) {
-            printf("writing new rule to .flockflockrc\n");
-            write_new_rule(&rule);
+            LOG("writing new rule to .flockflockrc");
+            commitNewRuleToDisk(&rule);
         }
     }
+
     if (rule.ruleClass == kFlockFlockPolicyClassWhitelistAllMatching)
         return 0;
     
     return EACCES;
 }
 
-void *handle_policy_query(void *ptr)
+void *handlePolicyQuery(void *ptr)
 {
     struct policy_query_msg *message = ptr;
     struct policy_response response;
     
-#ifdef DEBUG
-    printf("received policy query for pid %d target %s\n", message->query.pid, message->query.path);
-#endif
-    pthread_mutex_lock(&prompt_lock);
+    LOG("received policy query for pid %d target %s", message->query.pid, message->query.path);
+    pthread_mutex_lock(&g_promptLock);
     memset(&response, 0, sizeof(struct policy_response));
     response.security_token = message->query.security_token;
     response.pid = message->query.pid;
     response.response_type = message->query_type;
-    response.response = prompt_user_response(&message->query);
-    memcpy(&response.skey, skey, SKEY_LEN);
+    response.response = promptUserForPermission(&message->query);
+    memcpy(&response.skey, g_skey, SKEY_LEN);
 
-    pthread_mutex_lock(&lock);
-    IOConnectCallMethod(driverConnection, kFlockFlockRequestPolicyResponse, NULL, 0, &response, sizeof(struct policy_response), NULL, NULL, NULL, NULL);
-    pthread_mutex_unlock(&lock);
-    pthread_mutex_unlock(&prompt_lock);
+    pthread_mutex_lock(&g_sharedLock);
+    IOConnectCallMethod(g_driverConnection, kFlockFlockRequestPolicyResponse, NULL, 0, &response, sizeof(struct policy_response), NULL, NULL, NULL, NULL);
+    pthread_mutex_unlock(&g_sharedLock);
+    pthread_mutex_unlock(&g_promptLock);
     
     free(ptr);
     pthread_exit(0);
     return(NULL);
 }
 
-void notification_callback(CFMachPortRef unusedport, void *voidmessage, CFIndex size, void *info)
+void notificationCallback(CFMachPortRef unusedport, void *voidmessage, CFIndex size, void *info)
 {
     struct ff_msg_header *header = (struct ff_msg_header *)voidmessage;
 
-    fprintf(stderr, "received notification callback type %x\n", header->query_type);
+    LOG("received notification callback type %x", header->query_type);
     
     if (header->query_type == FFQ_ACCESS) {
         struct policy_query_msg *message = (struct policy_query_msg *)voidmessage;
         struct policy_query_msg *dup = malloc(sizeof(struct policy_query_msg));
         memcpy(dup, message, sizeof(struct policy_query_msg));
         pthread_t thread;
-        pthread_create(&thread, NULL, handle_policy_query, dup);
+        pthread_create(&thread, NULL, handlePolicyQuery, dup);
         pthread_detach(thread);
     } else if (header->query_type == FFQ_SECKEY) {
-        fprintf(stderr, "setting skey\n");
+        LOG("setting skey");
         struct skey_msg *message = (struct skey_msg *)voidmessage;
-        pthread_mutex_lock(&lock);
-        memcpy(skey, message->skey, SKEY_LEN);
-        pthread_mutex_unlock(&lock);
-        fprintf(stderr, "skey set\n");
+        pthread_mutex_lock(&g_sharedLock);
+        memcpy(g_skey, message->skey, SKEY_LEN);
+        pthread_mutex_unlock(&g_sharedLock);
+        LOG("skey set");
 
     } else {
-        printf("unknown notification arrived... oh noes!\n");
+        LOG("unknown notification arrived... oh noes!");
     }
 }
 
-void *wait_auth(void *ptr) {
+void *authenticateAndProgramModule(void *ptr) {
     int authenticated = 0, cnt=0;
     unsigned char blank[SKEY_LEN];
     CFStringRef str;
@@ -510,22 +529,22 @@ void *wait_auth(void *ptr) {
     
     sleep(1);
     memset(&blank, 0, SKEY_LEN);
-    pthread_mutex_lock(&lock);
-    authenticated = memcmp(skey, blank, SKEY_LEN);
-    pthread_mutex_unlock(&lock);
+    pthread_mutex_lock(&g_sharedLock);
+    authenticated = memcmp(g_skey, blank, SKEY_LEN);
+    pthread_mutex_unlock(&g_sharedLock);
 
     while(! authenticated && cnt < 5) {
         sleep(1);
         ++cnt;
-        pthread_mutex_lock(&lock);
-        authenticated = memcmp(skey, blank, SKEY_LEN);
-        pthread_mutex_unlock(&lock);
+        pthread_mutex_lock(&g_sharedLock);
+        authenticated = memcmp(g_skey, blank, SKEY_LEN);
+        pthread_mutex_unlock(&g_sharedLock);
     }
     
     if (!authenticated) {
         CFUserNotificationRef notification;
         
-        fprintf(stderr, "error: could not authenticate with driver\n");
+        LOG("error: could not authenticate with driver");
         
         const void* keys[] = {
             kCFUserNotificationAlertHeaderKey,
@@ -538,35 +557,35 @@ void *wait_auth(void *ptr) {
         CFDictionaryRef parameters = CFDictionaryCreate(0, keys, values,sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
         CFUserNotificationReceiveResponse(notification, 0, NULL);
-        fprintf(stderr, "reboot required\n");
+        LOG("reboot required");
         pthread_exit(0);
         return NULL;
     }
     
-    fprintf(stderr, "setting agent pid to %d\n", getpid());
+    LOG("setting agent pid to %d", getpid());
     uint64_t pid64 = (uint64_t) getpid();
     uint64_t args[1];
     args[0] = (uint64_t) pid64;
-    kern_return_t kr = IOConnectCallMethod(driverConnection, kFlockFlockAssignAgentPID, args, 1, skey, SKEY_LEN, NULL, NULL, NULL, NULL);
+    kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockAssignAgentPID, args, 1, g_skey, SKEY_LEN, NULL, NULL, NULL, NULL);
     if (kr) {
-        fprintf(stderr, "error: failed to set agent pid\n");
+        LOG("error: failed to set agent pid");
     }
     
     snprintf(pid, sizeof(pid), "%d", getpid());
     str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(pid), kCFStringEncodingUTF8, kCFAllocatorDefault);
-    IORegistryEntrySetCFProperty(driverConnection, CFSTR("pid"), str);
+    IORegistryEntrySetCFProperty(g_driverConnection, CFSTR("pid"), str);
     CFRelease(str);
     
-    fprintf(stderr, "sending configuration\n");
-    r = send_configuration(driverConnection);
+    LOG("sending configuration");
+    r = sendConfiguration();
     if (r) {
-        fprintf(stderr, "failed to send driver configuration\n");
+        LOG("failed to send driver configuration");
     }
     pthread_exit(0);
     return NULL;
 }
 
-int start_driver_comms() {
+int startDriverComms() {
     io_iterator_t iter = 0;
     io_service_t service = 0;
     kern_return_t kr;
@@ -574,7 +593,7 @@ int start_driver_comms() {
     CFDictionaryRef matchDict = IOServiceMatching(DRIVER);
     kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchDict, &iter);
     if (kr != KERN_SUCCESS) {
-        fprintf(stderr, "IOServiceGetMatchingServices failed on error %d\n", kr);
+        LOG("IOServiceGetMatchingServices failed on error %d", kr);
         return E_FAIL;
     }
     
@@ -589,51 +608,50 @@ int start_driver_comms() {
         className = IOObjectCopyClass(service);
         IORegistryEntryGetName(service, name);
         
-        fprintf(stderr, "found driver '%s'\n", name);
+        LOG("found driver '%s'", name);
         
-        kr = IOServiceOpen(service, owningTask, type, &driverConnection);
+        kr = IOServiceOpen(service, owningTask, type, &g_driverConnection);
         if (kr == KERN_SUCCESS) {
-            fprintf(stderr, "connected to driver %s, setting up comms...\n", DRIVER);
+            LOG("connected to driver %s, setting up comms...", DRIVER);
             
             CFRunLoopSourceRef notification_loop;
             CFMachPortRef notification_port;
             CFMachPortContext context;
             
             context.version = 0;
-            context.info = &driverConnection;
+            context.info = &g_driverConnection;
             context.retain = NULL;
             context.release = NULL;
             context.copyDescription = NULL;
             
-            fprintf(stderr, "assigning notiication port\n");
-            notification_port = CFMachPortCreate(NULL, notification_callback, &context, NULL);
+            LOG("assigning notiication port");
+            notification_port = CFMachPortCreate(NULL, notificationCallback, &context, NULL);
             notification_loop = CFMachPortCreateRunLoopSource(NULL, notification_port, 0);
             mach_port_t port = CFMachPortGetPort(notification_port);
-            IOConnectSetNotificationPort(driverConnection, 0, port, 0);
+            IOConnectSetNotificationPort(g_driverConnection, 0, port, 0);
             
-            fprintf(stderr, "starting filter\n");
-            start_filter(driverConnection);
+            LOG("starting filter");
+            startFilter(g_driverConnection);
             
             pthread_t thread;
-            pthread_create(&thread, NULL, wait_auth, NULL);
+            pthread_create(&thread, NULL, authenticateAndProgramModule, NULL);
             pthread_detach(thread);
             
-            fprintf(stderr, "waiting for notifications\n");
+            LOG("waiting for notifications");
             CFRunLoopAddSource(CFRunLoopGetCurrent(), notification_loop, kCFRunLoopDefaultMode);
             CFRunLoopRun();
         }
         
-        fprintf(stderr, "closing connection to %s\n", DRIVER);
+        LOG("closing connection to %s", DRIVER);
         IOServiceClose(service);
     } else {
-        fprintf(stderr, "IOServiceOpen failed on error %d\n", kr);
+        LOG("IOServiceOpen failed on error %d", kr);
     }
     
     IOObjectRelease(service);
     IOObjectRelease(iter);
     return 0;
 }
-
 
 int main(int argc, char *argv[]) {
     static struct termios oldt, newt;
@@ -648,14 +666,14 @@ int main(int argc, char *argv[]) {
     newt.c_lflag &= ~(ICANON);
     tcsetattr( STDIN_FILENO, TCSANOW, &newt);
 
-    pthread_mutex_init(&lock, NULL);
-    pthread_mutex_init(&prompt_lock, NULL);
-    atexit(stop);
+    pthread_mutex_init(&g_sharedLock, NULL);
+    pthread_mutex_init(&g_promptLock, NULL);
+    
     while(run) {
-        start_driver_comms();
+        startDriverComms();
         sleep(5);
     }
     tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
-    pthread_mutex_destroy(&lock);
-    pthread_mutex_destroy(&prompt_lock);
+    pthread_mutex_destroy(&g_sharedLock);
+    pthread_mutex_destroy(&g_promptLock);
 }
