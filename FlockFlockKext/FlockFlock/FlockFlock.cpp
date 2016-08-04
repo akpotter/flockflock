@@ -184,26 +184,24 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     
     persistenceHandle = { 0 };
     persistenceOps = {
-        .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
-        
-#ifdef PERSISTENCE
-        .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
-        .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
-        .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
-        .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
-        .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
-        .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
-        .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
-#endif
+        .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal
     };
     
     persistenceConf = {
-        .mpc_name            = "FF Persistence Mode",
-        .mpc_fullname        = "FlockFlock Kernel-Mode Persistence Mode",
+        .mpc_name            = "FF Process Monitor",
+        .mpc_fullname        = "FlockFlock Process Monitor",
         .mpc_labelnames      = NULL,
         .mpc_labelname_count = 0,
         .mpc_ops             = &persistenceOps,
-        .mpc_loadtime_flags  = MPC_LOADTIME_FLAG_UNLOADOK,
+        .mpc_loadtime_flags  =
+#ifdef PERSISTENCE
+        0, /* disable MPC_LOADTIME_FLAG_UNLOADOK to prevent unloading
+            *
+            * NOTE: setting this to 0 CAUSES A KERNEL PANIC AND REBOOT if the module is
+            *     unloaded. This is part of persistence */
+#else
+        MPC_LOADTIME_FLAG_UNLOADOK,
+#endif
         .mpc_field_off       = NULL,
         .mpc_runtime_flags   = 0,
         .mpc_list            = NULL,
@@ -243,7 +241,17 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
     if (filterActive == false) {
         policyHandle = { 0 };
         policyOps = {
-            .mpo_vnode_check_open = _ff_vnode_check_open_internal
+            .mpo_vnode_check_open = _ff_vnode_check_open_internal,
+            
+#ifdef PERSISTENCE
+            .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
+            .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
+            .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
+            .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
+            .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
+            .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
+            .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
+#endif
         };
         policyConf = {
             .mpc_name            = "FF File Monitor",
@@ -251,15 +259,7 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
             .mpc_labelnames      = NULL,
             .mpc_labelname_count = 0,
             .mpc_ops             = &policyOps,
-            .mpc_loadtime_flags  =
-#ifdef PERSISTENCE
-            0, /* disable MPC_LOADTIME_FLAG_UNLOADOK to prevent unloading
-                *
-                * NOTE: setting this to 0 CAUSES A KERNEL PANIC AND REBOOT if the module is
-                *     unloaded. This is part of persistence */
-#else
-            MPC_LOADTIME_FLAG_UNLOADOK,
-#endif
+            .mpc_loadtime_flags  = MPC_LOADTIME_FLAG_UNLOADOK,
             .mpc_field_off       = NULL,
             .mpc_runtime_flags   = 0,
             .mpc_list            = NULL,
@@ -305,6 +305,7 @@ bool com_zdziarski_driver_FlockFlock::stopFilter(unsigned char *key)
         if (kr == KERN_SUCCESS) {
             filterActive = false;
             success = true;
+            skey[0] = 0;
             IOLog("FlockFlock::stopFilter: filter stopped successfully\n");
         } else {
             IOLog("FlockFlock::stopFilter: an error occured while stopping the filter: %d\n", kr);
@@ -521,6 +522,8 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey() {
     for(i = 0; i < SKEY_LEN; ++i) {
         skey[i] = (unsigned char)random() % 0xff;
     }
+    if (skey[i] == 0)
+        skey[i] = 1; /* 0 = uninitialized */
     
     message.header.msgh_remote_port = notificationPort;
     message.header.msgh_local_port = MACH_PORT_NULL;

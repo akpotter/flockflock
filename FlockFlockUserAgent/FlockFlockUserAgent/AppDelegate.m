@@ -21,9 +21,6 @@
     
     [ [ StatusBarMenu sharedInstance ] setupMenuBar ];
     
-    ProcessSerialNumber psn = { 0, kCurrentProcess };
-    TransformProcessType(&psn, kProcessTransformToBackgroundApplication);
-    
     pthread_t thread;
     pthread_create(&thread, NULL, agent_main, NULL);
     pthread_detach(thread);

@@ -216,6 +216,8 @@ CHANGELOG
 	Fixed a bug that caused a crash in the user agent
 	Incorporated master userspace/kernel security protocol
 	Fixed a bug causing ~/Library/LaunchAgents to not get creaetd
-0.0.10*	Don't blow up the agent on unicode filenames
+0.0.10 	Don't blow up the agent on unicode filenames
 	Rolled agent into an app with status bar icon for enable/disable
-	
+0.0.11* Fixed packaging issues and macOS relocation, etc
+        Made small change to help hide agent from dock better
+        Nicer icon for the status bar

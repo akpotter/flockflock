@@ -1,11 +1,6 @@
 #!/bin/bash
 
-if [[ $EUID -ne 0 ]]; then
-   echo; echo "Script $0 must be run as root"; echo
-   exit 1
-fi
+BUILD=$1
+pkgbuild --root `pwd`/root --scripts pkgbuild-scripts --identifier com.zdziarski.FlockFlock --version $BUILD --ownership recommended --install-location / --sign "Jonathan Zdziarski" FlockFlock-$BUILD.pkg
 
-VERSION=$1
-pkgbuild --root `pwd`/Library --scripts pkgbuild-scripts --identifier com.zdziarski.FlockFlock --version $VERSION --ownership recommended --install-location /Library FlockFlock-$VERSION.pkg
-
-codesign -fs "Mac Developer: Jonathan Zdziarski" FlockFlock-$VERSION.pkg 
+#codesign -fs "Mac Developer: Jonathan Zdziarski" FlockFlock-$BUILD.pkg
