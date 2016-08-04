@@ -211,11 +211,11 @@ CHANGELOG
 0.0.7	Fixed a crash in the user agent when adding "Any Files"
 	Stability improvements for Sierra 
 0.0.8	Fixed a bug that led to a kernel panic
-0.0.9*	Manicured display names for the user
+0.0.9 	Manicured display names for the user
 	Improvements to finding the application path icon
 	Fixed a bug that caused a crash in the user agent
 	Incorporated master userspace/kernel security protocol
 	Fixed a bug causing ~/Library/LaunchAgents to not get creaetd
-0.0.10	Don't blow up the agent on unicode filenames
+0.0.1*	Don't blow up the agent on unicode filenames
 	Rolled agent into an app with status bar icon for enable/disable
 	
