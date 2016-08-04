@@ -268,7 +268,7 @@ int promptUserForPermission(struct policy_query *query)
     strncpy(proc_path, query->process_name, PATH_MAX-1);
     proc_pidpath(ppid, pproc_path, PATH_MAX);
     
-    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file '%s'\n\nApplication:\n%s (%d)\n\nParent:\n%s (%d)",
+    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file:\n%s\n\nApplication:\n%s (%d)\n\nParent:\n%s (%d)\n",
              query->path, proc_path, query->pid, pproc_path, ppid);
     LOG("%s", alert_message);
     alert_str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(alert_message), kCFStringEncodingMacRoman, kCFAllocatorDefault);
