@@ -237,10 +237,10 @@ int commitNewRuleToDisk(struct _FlockFlockClientPolicy *rule)
              (rule->rulePath[0]) ? rule->rulePath : "any",
              (rule->processName[0]) ? rule->processName : "any");
     
-    LOG("ADD:\n%s", rule_data);
+    LOG("%s", rule_data);
     file = fopen(path, "a");
     if (file) {
-        fprintf(file, "%s", rule_data);
+        fprintf(file, "%s\n", rule_data);
         fclose(file);
     }
     return 0;
