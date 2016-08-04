@@ -213,3 +213,5 @@ CHANGELOG
 0.0.8	Fixed a bug that led to a kernel panic
 0.0.9	Manicured display names for the user
 	Improvements to finding the application path icon
+0.0.10	Fixed a bug that caused a crash in the user agent
+	Incorporated master userspace/kernel security protocol

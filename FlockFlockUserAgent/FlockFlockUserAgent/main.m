@@ -249,6 +249,7 @@ int prompt_user_response(struct policy_query *query)
     SInt32 err, response;
     char *path, *extension, *ptr, option[PATH_MAX];
     char *displayName, *appPath, *p;
+    CFStringRef base = CFSTR("file:///Library/Application%20Support/FlockFlock/lock.png");
     int i;
     
     strncpy(proc_path, query->process_name, PATH_MAX-1);
@@ -258,26 +259,29 @@ int prompt_user_response(struct policy_query *query)
              query->path, proc_path, query->pid, pproc_path, ppid);
     printf("%s\n", alert_message);
     alert_str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(alert_message), kCFStringEncodingMacRoman, kCFAllocatorDefault);
-   
-    CFStringRef base = CFSTR("file:///Library/Application%20Support/FlockFlock/lock.png");
+    
+    /* manicure display names and pathname */
     displayName = strdup(query->process_name);
     if (displayName[strlen(displayName)-1] == '/')
         displayName[strlen(displayName)-1] = 0;
     p = strstr(displayName, "/ via ");
-    if (p) 
-        strcpy(p, p+1);
+    if (p) {
+        char *d = strdup(p+1);
+        strcpy(p, d);
+        free(d);
+    }
     appPath = strdup(displayName);
     p = strstr(appPath, " via ");
-    if (p) 
+    if (p) {
         p[0] = 0;
+    }
     
     fprintf(stderr, "finding application icon\n");
     NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
     if (image) { /* write to temp file, since we don't know where it came from */
-        printf("image size: %fx%f\n", image.size.width, image.size.height);
         NSBitmapImageRep *imgRep = [ [ image representations ] objectAtIndex: 0 ];
         NSData *data = [ imgRep representationUsingType: NSPNGFileType properties: nil ];
-        [ data writeToFile: @"/tmp/flockflock_temp.png" atomically: NO ];
+        [ data writeToFile: @"/tmp/flockflock_temp.png" atomically: NO ]; /* fugly */
         base = CFSTR("/tmp/flockflock_temp.png");
     }
     CFURLRef icon = CFURLCreateWithString(NULL, base, NULL);
@@ -418,6 +422,8 @@ int prompt_user_response(struct policy_query *query)
     CFRelease(popup_options);
     CFRelease(radio_options);
     CFRelease(alert_str);
+    free(displayName);
+    free(appPath);
     
     /* add new rule to driver */
     if (responseFlags & CFUserNotificationCheckBoxChecked(1)
