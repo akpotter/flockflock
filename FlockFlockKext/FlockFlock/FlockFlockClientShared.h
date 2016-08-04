@@ -10,6 +10,7 @@
 #define FlockFlockClientShared_h
 
 #define DRIVER "com_zdziarski_driver_FlockFlock"
+#define SKEY_LEN 32
 
 enum FlockFlockRequestCode {
     kFlockFlockRequestClearConfiguration,
@@ -17,6 +18,7 @@ enum FlockFlockRequestCode {
     kFlockFlockRequestStartFilter,
     kFlockFlockRequestStopFilter,
     kFlockFlockRequestPolicyResponse,
+    kFlockFlockAssignAgentPID,
     
     kFlockFlockRequestMethodCount
 };
@@ -45,6 +47,7 @@ typedef struct _FlockFlockClientPolicy {
     char rulePath[PATH_MAX];
     int32_t temporaryRule;
     int32_t temporaryPid;
+    char skey[SKEY_LEN];
 } *FlockFlockClientPolicy;
 
 typedef struct _FlockFlockPolicy {
@@ -55,13 +58,13 @@ typedef struct _FlockFlockPolicy {
 typedef FlockFlockPolicy FlockFlockPolicyHierarchy;
 
 #define FFQ_ACCESS  0x0100
+#define FFQ_SECKEY  0x0101
 
 struct policy_query {
     pid_t pid;
     char path[PATH_MAX];
     char process_name[PATH_MAX];
     uint32_t security_token;
-    uint32_t query_type;
 };
 
 struct policy_response {
@@ -70,12 +73,21 @@ struct policy_response {
     uint32_t security_token;
     uint32_t response;
     uint32_t response_type;
+    char skey[SKEY_LEN];
 };
 
 struct policy_query_msg
 {
     mach_msg_header_t header;
+    uint32_t query_type;
     struct policy_query query;
+};
+
+struct skey_msg
+{
+    mach_msg_header_t header;
+    uint32_t query_type;
+    char skey[SKEY_LEN];
 };
 
 #endif /* FlockFlockClientShared_h */

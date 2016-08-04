@@ -14,12 +14,12 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlockClient, IOUserClien
 const IOExternalMethodDispatch
 com_zdziarski_driver_FlockFlockClient::sMethods[kFlockFlockRequestMethodCount] =
 {
-    { &com_zdziarski_driver_FlockFlockClient::sClearConfiguration, 0, 0, 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sClearConfiguration, 0, SKEY_LEN, 0, 0 },
     { &com_zdziarski_driver_FlockFlockClient::sAddClientPolicy, 0, sizeof(struct _FlockFlockClientPolicy), 0, 0 },
     { &com_zdziarski_driver_FlockFlockClient::sStartFilter, 0, 0, 0, 0 },
-    { &com_zdziarski_driver_FlockFlockClient::sStopFilter, 0, 0, 0, 0 },
-    { &com_zdziarski_driver_FlockFlockClient::sRespond, 0, sizeof(struct policy_response), 0, 0 }
-
+    { &com_zdziarski_driver_FlockFlockClient::sStopFilter, 0, SKEY_LEN, 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sRespond, 0, sizeof(struct policy_response), 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sSetPID, 1, SKEY_LEN, 0, 0 }
 };
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args)
@@ -37,11 +37,21 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void 
     return KERN_SUCCESS;
 }
 
+IOReturn com_zdziarski_driver_FlockFlockClient::sSetPID(OSObject *target, void *reference, IOExternalMethodArguments *args)
+{
+    IOLog("FlockFlockClient::sSetPID");
+    com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
+    me->m_driver->setAgentPID(args->scalarInput[0], (unsigned char *)args->structureInput);
+    return KERN_SUCCESS;
+}
+
+
+
 IOReturn com_zdziarski_driver_FlockFlockClient::sClearConfiguration(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
     IOLog("FlockFlockClient::sClearConfiguration");
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
-    me->m_driver->clearAllRules();
+    me->m_driver->clearAllRules((unsigned char *)args->structureInput);
     return KERN_SUCCESS;
 }
 
@@ -77,7 +87,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sStartFilter(OSObject *target, v
 IOReturn com_zdziarski_driver_FlockFlockClient::sStopFilter(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
-    bool success = me->m_driver->stopFilter();
+    bool success = me->m_driver->stopFilter((unsigned char *)args->structureInput);
     if (success == true)
         return KERN_SUCCESS;
     return KERN_FAILURE;
@@ -95,7 +105,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::externalMethod(uint32_t selector
 }
 
 bool com_zdziarski_driver_FlockFlockClient::initWithTask(task_t owningTask, void *securityToken, UInt32 type, OSDictionary *properties)
-{
+{    
     IOLog("FlockFlockClient::initWithTask client init\n");
     
     if (!owningTask)
@@ -145,7 +155,6 @@ IOReturn com_zdziarski_driver_FlockFlockClient::registerNotificationPort(mach_po
         return kIOReturnSuccess;
     }
     IOLog("FlockFlockClient::registerNotificationPort failed\n");
-
     return kIOReturnInvalid;
 }
 

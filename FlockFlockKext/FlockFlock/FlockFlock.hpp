@@ -64,7 +64,6 @@ public:
     virtual bool start(IOService *provider) override;
     virtual void stop(IOService *provider) override;
     virtual void free(void) override;
-    virtual IOReturn setProperties(OSObject* properties) override;
     
     /* MAC policy methods and static hooks */
     
@@ -82,10 +81,13 @@ public:
 
     /* IOUserClient methods */
     bool startFilter();
-    bool stopFilter();
+    bool stopFilter(unsigned char *key);
     void clearMachPort();
-    void clearAllRules();
+    void clearAllRules(unsigned char *key);
     bool setMachPort(mach_port_t port);
+    bool setAgentPID(uint64_t pid, unsigned char *key);
+    int genSecurityKey();
+
     kern_return_t addClientPolicy(FlockFlockClientPolicy policy);
 
 private:
@@ -114,6 +116,7 @@ private:
     FlockFlockPolicy lastPolicyAdded;
     struct pid_path *pid_root;
     struct posix_spawn_map *pid_map, *map_last_insert;
+    unsigned char skey[SKEY_LEN];
     
     /* file access MAC policy */
     mac_policy_handle_t policyHandle;

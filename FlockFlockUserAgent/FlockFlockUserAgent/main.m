@@ -26,13 +26,19 @@
 #include <sys/types.h>
 #include <sys/ptrace.h>
 
+#include "../../FlockFlockKext/FlockFlock/FlockFlockClientShared.h"
+
 #define DEFAULT_FLOCKFLOCKRC "/Library/Application Support/FlockFlock/.flockflockrc"
 
 io_connect_t driverConnection;
 pthread_mutex_t lock, prompt_lock;
+unsigned char skey[SKEY_LEN];
 
-#include "../../FlockFlockKext/FlockFlock/FlockFlockClientShared.h"
-
+struct ff_msg_header
+{
+    mach_msg_header_t header;
+    uint32_t query_type;
+};
 
 enum FlockFlockPolicyClass get_class_by_name(const char *name) {
     if (!strcmp(name, "allow"))
@@ -63,6 +69,13 @@ int send_configuration(io_connect_t connection)
     char *home;
     struct _FlockFlockClientPolicy rule;
     
+    fprintf(stderr, "clearing old configuration\n");
+    kern_return_t kr = IOConnectCallMethod(connection, kFlockFlockRequestClearConfiguration, NULL, 0, skey, SKEY_LEN, NULL, NULL, NULL, NULL);
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "unable to clear old configuration, aborting\n");
+        return E_FAIL;
+    }
+    
     home = getenv("HOME");
     if (! home) {
         struct passwd* pwd = getpwuid(getuid());
@@ -76,9 +89,11 @@ int send_configuration(io_connect_t connection)
         return errno;
     }
     
+    fprintf(stderr, "opening configuration file\n");
     FILE *file = fopen(path, "r");
     char buf[2048];
     if (!file) {
+        fprintf(stderr, "no user config found, opening default\n");
         file = fopen(DEFAULT_FLOCKFLOCKRC, "r");
         if (file) {
             FILE *out = fopen(path, "w");
@@ -100,12 +115,7 @@ int send_configuration(io_connect_t connection)
         }
     }
 
-    kern_return_t kr = IOConnectCallMethod(connection, kFlockFlockRequestClearConfiguration, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
-    if (kr != KERN_SUCCESS) {
-        fprintf(stderr, "unable to clear old configuration, aborting\n");
-        return E_FAIL;
-    }
-
+    fprintf(stderr, "reading config\n");
     while((fgets(buf, sizeof(buf), file))!=NULL) {
         if (buf[0] == '#' || buf[0] == ';')
             continue;
@@ -149,6 +159,7 @@ int send_configuration(io_connect_t connection)
         printf("proc : %s (%d)\n", rule.processName, (int)strlen(rule.processName));
         printf("temp : %d\n", rule.temporaryRule);
         
+        memcpy(&rule.skey, skey, SKEY_LEN);
         kern_return_t kr = IOConnectCallMethod(connection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
         if (kr == KERN_SUCCESS) {
             printf("\tsuccess\n");
@@ -260,8 +271,10 @@ int prompt_user_response(struct policy_query *query)
     if (p) 
         p[0] = 0;
     
+    fprintf(stderr, "finding application icon\n");
     NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
-    if (image != nil) { /* write to temp file, since we don't know where it came from */
+    if (image) { /* write to temp file, since we don't know where it came from */
+        printf("image size: %fx%f\n", image.size.width, image.size.height);
         NSBitmapImageRep *imgRep = [ [ image representations ] objectAtIndex: 0 ];
         NSData *data = [ imgRep representationUsingType: NSPNGFileType properties: nil ];
         [ data writeToFile: @"/tmp/flockflock_temp.png" atomically: NO ];
@@ -411,6 +424,7 @@ int prompt_user_response(struct policy_query *query)
         || responseFlags & CFUserNotificationCheckBoxChecked(2)
         || responseFlags & CFUserNotificationCheckBoxChecked(3))
     {
+        memcpy(&rule.skey, skey, SKEY_LEN);
         int kr = IOConnectCallMethod(driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
         if (kr == 0) {
             printf("new rule added successfully\n");
@@ -441,9 +455,10 @@ void *handle_policy_query(void *ptr)
     memset(&response, 0, sizeof(struct policy_response));
     response.security_token = message->query.security_token;
     response.pid = message->query.pid;
-    response.response_type = message->query.query_type;
+    response.response_type = message->query_type;
     response.response = prompt_user_response(&message->query);
-    
+    memcpy(&response.skey, skey, SKEY_LEN);
+
     pthread_mutex_lock(&lock);
     IOConnectCallMethod(driverConnection, kFlockFlockRequestPolicyResponse, NULL, 0, &response, sizeof(struct policy_response), NULL, NULL, NULL, NULL);
     pthread_mutex_unlock(&lock);
@@ -456,26 +471,99 @@ void *handle_policy_query(void *ptr)
 
 void notification_callback(CFMachPortRef unusedport, void *voidmessage, CFIndex size, void *info)
 {
-    struct policy_query_msg *message = (struct policy_query_msg *)voidmessage;
+    struct ff_msg_header *header = (struct ff_msg_header *)voidmessage;
 
-    if (message->query.query_type == FFQ_ACCESS) {
+    fprintf(stderr, "received notification callback type %x\n", header->query_type);
+    
+    if (header->query_type == FFQ_ACCESS) {
+        struct policy_query_msg *message = (struct policy_query_msg *)voidmessage;
         struct policy_query_msg *dup = malloc(sizeof(struct policy_query_msg));
         memcpy(dup, message, sizeof(struct policy_query_msg));
         pthread_t thread;
         pthread_create(&thread, NULL, handle_policy_query, dup);
         pthread_detach(thread);
+    } else if (header->query_type == FFQ_SECKEY) {
+        fprintf(stderr, "setting skey\n");
+        struct skey_msg *message = (struct skey_msg *)voidmessage;
+        pthread_mutex_lock(&lock);
+        memcpy(skey, message->skey, SKEY_LEN);
+        pthread_mutex_unlock(&lock);
+        fprintf(stderr, "skey set\n");
+
     } else {
         printf("unknown notification arrived... oh noes!\n");
     }
+}
+
+void *wait_auth(void *ptr) {
+    int authenticated = 0, cnt=0;
+    unsigned char blank[SKEY_LEN];
+    CFStringRef str;
+    char pid[16];
+    int r;
+    
+    sleep(1);
+    memset(&blank, 0, SKEY_LEN);
+    pthread_mutex_lock(&lock);
+    authenticated = memcmp(skey, blank, SKEY_LEN);
+    pthread_mutex_unlock(&lock);
+
+    while(! authenticated && cnt < 5) {
+        sleep(1);
+        ++cnt;
+        pthread_mutex_lock(&lock);
+        authenticated = memcmp(skey, blank, SKEY_LEN);
+        pthread_mutex_unlock(&lock);
+    }
+    
+    if (!authenticated) {
+        CFUserNotificationRef notification;
+        
+        fprintf(stderr, "error: could not authenticate with driver\n");
+        
+        const void* keys[] = {
+            kCFUserNotificationAlertHeaderKey,
+            kCFUserNotificationAlertMessageKey,
+        };
+        const void* values[] = {
+            CFSTR("Critical Failure, Reboot Required"),
+            CFSTR("FlockFlock has encountered a critical failure and a reboot is required. Please reboot your system.")
+        };
+        CFDictionaryRef parameters = CFDictionaryCreate(0, keys, values,sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
+        CFUserNotificationReceiveResponse(notification, 0, NULL);
+        fprintf(stderr, "reboot required\n");
+        pthread_exit(0);
+        return NULL;
+    }
+    
+    fprintf(stderr, "setting agent pid to %d\n", getpid());
+    uint64_t pid64 = (uint64_t) getpid();
+    uint64_t args[1];
+    args[0] = (uint64_t) pid64;
+    kern_return_t kr = IOConnectCallMethod(driverConnection, kFlockFlockAssignAgentPID, args, 1, skey, SKEY_LEN, NULL, NULL, NULL, NULL);
+    if (kr) {
+        fprintf(stderr, "error: failed to set agent pid\n");
+    }
+    
+    snprintf(pid, sizeof(pid), "%d", getpid());
+    str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(pid), kCFStringEncodingUTF8, kCFAllocatorDefault);
+    IORegistryEntrySetCFProperty(driverConnection, CFSTR("pid"), str);
+    CFRelease(str);
+    
+    fprintf(stderr, "sending configuration\n");
+    r = send_configuration(driverConnection);
+    if (r) {
+        fprintf(stderr, "failed to send driver configuration\n");
+    }
+    pthread_exit(0);
+    return NULL;
 }
 
 int start_driver_comms() {
     io_iterator_t iter = 0;
     io_service_t service = 0;
     kern_return_t kr;
-    CFMachPortRef notification_port;
-    CFRunLoopSourceRef notification_loop;
-    CFMachPortContext context;
     
     CFDictionaryRef matchDict = IOServiceMatching(DRIVER);
     kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchDict, &iter);
@@ -499,38 +587,34 @@ int start_driver_comms() {
         
         kr = IOServiceOpen(service, owningTask, type, &driverConnection);
         if (kr == KERN_SUCCESS) {
-            CFStringRef str;
-            char pid[16];
-            int r;
+            fprintf(stderr, "connected to driver %s, setting up comms...\n", DRIVER);
             
-            fprintf(stderr, "connected to driver %s\n", DRIVER);
-            fprintf(stderr, "sending configuration\n");
-            r = send_configuration(driverConnection);
-            snprintf(pid, sizeof(pid), "%d", getpid());
-            str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(pid), kCFStringEncodingUTF8, kCFAllocatorDefault);
-            IORegistryEntrySetCFProperty(service, CFSTR("pid"), str);
-            CFRelease(str);
+            CFRunLoopSourceRef notification_loop;
+            CFMachPortRef notification_port;
+            CFMachPortContext context;
             
-            if (r == 0) {
-                context.version = 0;
-                context.info = &driverConnection;
-                context.retain = NULL;
-                context.release = NULL;
-                context.copyDescription = NULL;
-                
-                fprintf(stderr, "assigning notiication port\n");
-                notification_port = CFMachPortCreate(NULL, notification_callback, &context, NULL);
-                notification_loop = CFMachPortCreateRunLoopSource(NULL, notification_port, 0);
-                mach_port_t port = CFMachPortGetPort(notification_port);
-                IOConnectSetNotificationPort(driverConnection, 0, port, 0);
-                
-                fprintf(stderr, "starting filter\n");
-                start_filter(driverConnection);
-                
-                fprintf(stderr, "waiting for notifications\n");
-                CFRunLoopAddSource(CFRunLoopGetCurrent(), notification_loop, kCFRunLoopDefaultMode);
-                CFRunLoopRun();
-            }
+            context.version = 0;
+            context.info = &driverConnection;
+            context.retain = NULL;
+            context.release = NULL;
+            context.copyDescription = NULL;
+            
+            fprintf(stderr, "assigning notiication port\n");
+            notification_port = CFMachPortCreate(NULL, notification_callback, &context, NULL);
+            notification_loop = CFMachPortCreateRunLoopSource(NULL, notification_port, 0);
+            mach_port_t port = CFMachPortGetPort(notification_port);
+            IOConnectSetNotificationPort(driverConnection, 0, port, 0);
+            
+            fprintf(stderr, "starting filter\n");
+            start_filter(driverConnection);
+            
+            pthread_t thread;
+            pthread_create(&thread, NULL, wait_auth, NULL);
+            pthread_detach(thread);
+            
+            fprintf(stderr, "waiting for notifications\n");
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), notification_loop, kCFRunLoopDefaultMode);
+            CFRunLoopRun();
         }
         
         fprintf(stderr, "closing connection to %s\n", DRIVER);
@@ -549,7 +633,9 @@ int main(int argc, char *argv[]) {
     static struct termios oldt, newt;
     bool run = true;
     
-    // ptrace(PT_DENY_ATTACH, 0, 0, 0);
+#ifdef PERSISTENCE
+    ptrace(PT_DENY_ATTACH, 0, 0, 0);
+#endif
     
     tcgetattr( STDIN_FILENO, &oldt);
     newt = oldt;

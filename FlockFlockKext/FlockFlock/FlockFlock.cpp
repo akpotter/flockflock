@@ -49,7 +49,6 @@ void _ff_cred_label_associate_fork_internal(kauth_cred_t cred, proc_t proc)
 int _ff_eval_vnode(struct vnode *vp)
 {
     char target_path[MAXPATHLEN];
-    char proc_name[MAXPATHLEN];
     int target_len = MAXPATHLEN;
     int ret = 0;
     
@@ -60,9 +59,6 @@ int _ff_eval_vnode(struct vnode *vp)
     {
         target_path[MAXPATHLEN-1] = 0;
         target_len = (int)strlen(target_path);
-    
-        proc_selfname(proc_name, MAXPATHLEN);
-        IOLog("_ff_eval_vnode evaluating op for %s[%d] %s\n", proc_name, proc_selfpid(), target_path);
         
         if (!strncmp(target_path, KMOD_PATH, strlen(KMOD_PATH)))
             ret = EACCES;
@@ -78,6 +74,12 @@ int _ff_eval_vnode(struct vnode *vp)
         IOLog("_ff_eval_vnode: denying operation target path %s\n", target_path);
     }
     return ret;
+}
+
+int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int signum)
+{
+    if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return EACCES;
+    return 0;
 }
 
 int _ff_vnode_check_unlink_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
@@ -140,7 +142,8 @@ bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
     filterActive       = false;
     shouldStop         = false;
     userAgentPID       = 0;
-    lock     = IOLockAlloc();
+    lock               = IOLockAlloc();
+    bzero(skey, sizeof(skey));
     
     initQueryContext(&policyContext);
     setProperty("IOUserClientClass", "com_zdziarski_driver_FlockFlockClient");
@@ -183,14 +186,15 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     persistenceOps = {
         .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
         
-        /*
+#ifdef PERSISTENCE
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
         .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
-        .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal
-         */
-//        .mpo_vnode_check_truncate    = _ff_vnode_check_truncate_internal,
-//        .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
+        .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
+        .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
+        .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
+        .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
+#endif
     };
     
     persistenceConf = {
@@ -233,6 +237,7 @@ bool com_zdziarski_driver_FlockFlock::stopPersistence()
 bool com_zdziarski_driver_FlockFlock::startFilter()
 {
     bool success = false;
+    int r;
     
     IOLockLock(lock);
     if (filterActive == false) {
@@ -246,10 +251,15 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
             .mpc_labelnames      = NULL,
             .mpc_labelname_count = 0,
             .mpc_ops             = &policyOps,
-            .mpc_loadtime_flags  = MPC_LOADTIME_FLAG_UNLOADOK, /* disable MPC_LOADTIME_FLAG_UNLOADOK to prevent unloading
-                                       *
-                                       * NOTE: setting this to 0 CAUSES A KERNEL PANIC AND REBOOT if the module is
-                                       *     unloaded. This is part of persistence defense. */
+            .mpc_loadtime_flags  =
+#ifdef PERSISTENCE
+            0, /* disable MPC_LOADTIME_FLAG_UNLOADOK to prevent unloading
+                *
+                * NOTE: setting this to 0 CAUSES A KERNEL PANIC AND REBOOT if the module is
+                *     unloaded. This is part of persistence */
+#else
+            MPC_LOADTIME_FLAG_UNLOADOK,
+#endif
             .mpc_field_off       = NULL,
             .mpc_runtime_flags   = 0,
             .mpc_list            = NULL,
@@ -265,13 +275,29 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
             IOLog("FlockFlock::startFilter: an error occured while starting the filter: %d\n", mpr);
         }
     }
+    
+    /* generate a security key and send it to the user client. the driver will only do
+     * this once and will need to be rebooted or unloaded in order for a client to connect
+     * and authenticate again.
+     */
+    
+    r = genSecurityKey();
+    if (r)
+        success = false;
+    
     IOLockUnlock(lock);
     return success;
 }
 
-bool com_zdziarski_driver_FlockFlock::stopFilter()
+bool com_zdziarski_driver_FlockFlock::stopFilter(unsigned char *key)
 {
     bool success = false;
+    
+    if (memcmp(&skey, key, SKEY_LEN)) {
+        IOLog("FlockFlock::stopFilter: skey failure\n");
+        return false;
+    }
+    
     IOLockLock(lock);
     if (filterActive == true) {
         kern_return_t kr = _mac_policy_unregister_internal(policyHandle);
@@ -287,10 +313,17 @@ bool com_zdziarski_driver_FlockFlock::stopFilter()
     return success;
 }
 
-void com_zdziarski_driver_FlockFlock::clearAllRules()
+void com_zdziarski_driver_FlockFlock::clearAllRules(unsigned char *key)
 {
-    IOLog("IOKitTest::clearAllRules\n");
+    IOLog("FlockFlock::clearAllRules\n");
 
+    if (memcmp(&skey, key, SKEY_LEN)) {
+        IOLog("FlockFlock::clearAllRules: skey failure\n");
+        return;
+    }
+    
+    IOLog("FlockFlock::clearAllRules: clearing all rules\n");
+    
     IOLockLock(lock);
     FlockFlockPolicy rule = policyRoot;
     while(rule) {
@@ -309,6 +342,11 @@ kern_return_t com_zdziarski_driver_FlockFlock::addClientPolicy(FlockFlockClientP
     
     IOLog("IOKitTest::addClientPolicy\n");
 
+    if (memcmp(&skey, &clientRule->skey, SKEY_LEN)) {
+        IOLog("FlockFlock::addClientPolicy: skey failure\n");
+        return KERN_NO_ACCESS;
+    }
+    
     if (! clientRule)
         return KERN_INVALID_VALUE;
     
@@ -348,26 +386,21 @@ void com_zdziarski_driver_FlockFlock::clearMachPort() {
     IOLockUnlock(lock);
 }
 
-IOReturn com_zdziarski_driver_FlockFlock::setProperties(OSObject* properties)
+bool com_zdziarski_driver_FlockFlock::setAgentPID(uint64_t pid, unsigned char *key)
 {
-    OSDictionary *propertyDict;
     
-    propertyDict = OSDynamicCast(OSDictionary, properties);
-    if (propertyDict != NULL)
-    {
-        OSObject *theValue;
-        OSString *theString;
-        
-        theValue = propertyDict->getObject("pid");
-        theString = OSDynamicCast(OSString, theValue);
-        userAgentPID = (uint32_t)strtol(theString->getCStringNoCopy(), NULL, 0);
-        if (userAgentPID) {
-            IOLog("FlockFlock::setProperties: set pid to %d\n", userAgentPID);
-            return kIOReturnSuccess;
-        }
+    if (memcmp(&skey, key, SKEY_LEN)) {
+        IOLog("FlockFlock::setAgentPID: skey failure\n");
+        return false;
     }
     
-    return kIOReturnUnsupported;
+    IOLockLock(lock);
+    userAgentPID = (int)pid;
+    IOLockUnlock(lock);
+    
+    IOLog("FlockFlock::setAgentPID set pid to %d\n", (int)pid);
+
+    return true;
 }
 
 bool com_zdziarski_driver_FlockFlock::initQueryContext(mach_query_context *context) {
@@ -415,6 +448,13 @@ bool com_zdziarski_driver_FlockFlock::receivePolicyResponse(struct policy_respon
         return false;
     }
     
+    if (memcmp(&skey, &context->response.skey, SKEY_LEN)) {
+        IOLog("FlockFlock::receivePolicyResponse: skey failure\n");
+        IOLockUnlock(context->reply_lock);
+        IOLockUnlock(context->policy_lock);
+        return false;
+    }
+    
     if (context->security_token == context->response.security_token) {
         bcopy(&context->response, response, sizeof(struct policy_response));
         success = true;
@@ -441,7 +481,8 @@ int com_zdziarski_driver_FlockFlock::sendPolicyQuery(struct policy_query *query,
     context->message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
     context->message.header.msgh_size = sizeof(context->message);
     context->message.header.msgh_id = 0;
-    
+    context->message.query_type = FFQ_ACCESS;
+
     query->security_token = random();
     bcopy(query, &context->message.query, sizeof(struct policy_query));
 
@@ -453,6 +494,43 @@ int com_zdziarski_driver_FlockFlock::sendPolicyQuery(struct policy_query *query,
     }
     
     context->security_token = query->security_token;
+    return ret;
+}
+
+/* when the user client first connects, generate a random security key and send it over
+ * via a mach message; the client will have to send this key with any control queries
+ * to authenticate.
+ *
+ * if malware should kill the client process, the system will require a reboot in order
+ * to reconnect; we want this type of behavior to prevent malware from simply
+ * masquerading as the client and disabling rules.
+ */
+
+int com_zdziarski_driver_FlockFlock::genSecurityKey() {
+    struct skey_msg message;
+    int ret, i;
+    
+    IOLog("FlockFlock::genSecurityKey\n");
+#ifdef PERSISTENCE
+    if (skey[0] != 0) {
+        IOLog("FlockFlock::genSecurityKey: error: key already exists\n");
+        return EACCES;
+    }
+#endif
+    for(i = 0; i < SKEY_LEN; ++i) {
+        skey[i] = (unsigned char)random() % 0xff;
+    }
+    
+    message.header.msgh_remote_port = notificationPort;
+    message.header.msgh_local_port = MACH_PORT_NULL;
+    message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
+    message.header.msgh_size = sizeof(message);
+    message.header.msgh_id = 0;
+    message.query_type = FFQ_SECKEY;
+    bcopy(skey, message.skey, SKEY_LEN);
+    
+    ret = mach_msg_send_from_kernel(&message.header, sizeof(message));
+    IOLog("FlockFlock::genSecurityKey: send returned %d\n", ret);
     return ret;
 }
 
@@ -839,6 +917,8 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         return 0;
     if (vnode_isdir(vp))        /* we only work with files */
         return 0;
+    if (policyRoot == NULL)     /* no rules programmed yet, agent setup */
+        return 0;
     
     IOLockLock(lock);
     agentPID = userAgentPID;
@@ -855,7 +935,6 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
     
     /* build the policy query */
     query->pid = pid;
-    query->query_type = FFQ_ACCESS;
     query->path[0] = 0;
     if (! vn_getpath(vp, query->path, &buflen))
         query->path[PATH_MAX-1] = 0;
@@ -956,7 +1035,7 @@ void com_zdziarski_driver_FlockFlock::stop(IOService *provider)
     kauth_unlisten_scope(kauthListener);
 
     if (active == true) {
-        stopFilter();
+        stopFilter(skey);
     }
         
     super::stop(provider);
@@ -967,7 +1046,7 @@ void com_zdziarski_driver_FlockFlock::free(void)
     struct pid_path *ptr=NULL, *next;
     struct posix_spawn_map *mptr=NULL, *mnext;
     IOLog("IOKitTest::free\n");
-    clearAllRules();
+    clearAllRules(skey);
     
     destroyQueryContext(&policyContext);
     

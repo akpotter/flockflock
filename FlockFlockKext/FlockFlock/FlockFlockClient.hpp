@@ -42,6 +42,9 @@ protected:
     static IOReturn sStartFilter(OSObject *target, void *reference, IOExternalMethodArguments *args);
     static IOReturn sStopFilter(OSObject *target, void *reference, IOExternalMethodArguments *args);
     static IOReturn sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args);
+    static IOReturn sAuthenticate(OSObject *target, void *reference, IOExternalMethodArguments *args);
+    static IOReturn sSetPID(OSObject *target, void *reference, IOExternalMethodArguments *args);
+
 };
 
 #endif /* FlockFlockClient_hpp */
