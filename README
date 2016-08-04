@@ -136,8 +136,13 @@ PERSISTENCE
 
 The module prevents deletion of core files. Any attempt to unload the
 kernel extension, except through recovery mode, will cause a kernel
-panic and subsequent reboot. These are designed to protect your data,
-not make things convenient.
+panic and subsequent reboot. Its data files and core files are protected
+from modification, and its processes are protected from being killed. 
+
+The user interface has a convenient menu option to disable FlockFlock so
+that it can be removed or upgraded without booting into recovery mode. This
+requires user interaction, providing a reasonable compromise between
+security and usability.
 
 NOTE: Persistence is disabled for alpha versions
 
