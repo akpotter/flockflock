@@ -215,4 +215,4 @@ CHANGELOG
 	Improvements to finding the application path icon
 	Fixed a bug that caused a crash in the user agent
 	Incorporated master userspace/kernel security protocol
-
+	Fixed a bug causing ~/Library/LaunchAgents to not get creaetd
