@@ -216,6 +216,6 @@ CHANGELOG
 	Fixed a bug that caused a crash in the user agent
 	Incorporated master userspace/kernel security protocol
 	Fixed a bug causing ~/Library/LaunchAgents to not get creaetd
-0.0.1*	Don't blow up the agent on unicode filenames
+0.0.10*	Don't blow up the agent on unicode filenames
 	Rolled agent into an app with status bar icon for enable/disable
 	
