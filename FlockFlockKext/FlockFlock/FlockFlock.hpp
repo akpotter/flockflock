@@ -86,7 +86,6 @@ public:
     void clearAllRules(unsigned char *key);
     bool setMachPort(mach_port_t port);
     bool setAgentPID(uint64_t pid, unsigned char *key);
-    int genSecurityKey();
 
     kern_return_t addClientPolicy(FlockFlockClientPolicy policy);
 
@@ -103,6 +102,8 @@ private:
     void houseKeepPosixSpawnMap();
     void houseKeepPathTable();
     void houseKeepMasterRuleTable();
+    int sendStopNotice();
+    int genSecurityKey();
 
 public:
     mach_port_t notificationPort;

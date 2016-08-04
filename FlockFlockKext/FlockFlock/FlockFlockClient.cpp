@@ -86,8 +86,10 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sStartFilter(OSObject *target, v
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sStopFilter(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
+    IOLog("FlockFlockClient::sStopFilter");
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
     bool success = me->m_driver->stopFilter((unsigned char *)args->structureInput);
+    IOLog("FlockFlockClient::sStopFilter: success = %d\n", success);
     if (success == true)
         return KERN_SUCCESS;
     return KERN_FAILURE;

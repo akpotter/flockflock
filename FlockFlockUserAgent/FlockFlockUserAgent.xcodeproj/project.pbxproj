@@ -7,29 +7,69 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		700BE6E51D4BDEC0004F20D3 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 700BE6E41D4BDEC0004F20D3 /* main.m */; };
+		7079AC3D1D53A876001595BB /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7079AC3C1D53A876001595BB /* AppDelegate.m */; };
+		7079AC401D53A876001595BB /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7079AC3F1D53A876001595BB /* main.m */; };
+		7079AC451D53A876001595BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7079AC441D53A876001595BB /* Assets.xcassets */; };
+		7079AC531D53A876001595BB /* FlockFlockUserAgentTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 7079AC521D53A876001595BB /* FlockFlockUserAgentTests.m */; };
+		7079AC5E1D53A876001595BB /* FlockFlockUserAgentUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 7079AC5D1D53A876001595BB /* FlockFlockUserAgentUITests.m */; };
+		7079AC6C1D53A887001595BB /* MainMenu.nib in Resources */ = {isa = PBXBuildFile; fileRef = 7079AC6B1D53A887001595BB /* MainMenu.nib */; };
+		7079AC6F1D53A8B3001595BB /* StatusBarMenu.m in Sources */ = {isa = PBXBuildFile; fileRef = 7079AC6E1D53A8B3001595BB /* StatusBarMenu.m */; };
+		7079AC711D53AB20001595BB /* agent_main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7079AC701D53AB20001595BB /* agent_main.m */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		700BE6DF1D4BDEC0004F20D3 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
+/* Begin PBXContainerItemProxy section */
+		7079AC4F1D53A876001595BB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7079AC301D53A876001595BB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7079AC371D53A876001595BB;
+			remoteInfo = FlockFlockUserAgent;
 		};
-/* End PBXCopyFilesBuildPhase section */
+		7079AC5A1D53A876001595BB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7079AC301D53A876001595BB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7079AC371D53A876001595BB;
+			remoteInfo = FlockFlockUserAgent;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		700BE6E11D4BDEC0004F20D3 /* FlockFlockUserAgent */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = FlockFlockUserAgent; sourceTree = BUILT_PRODUCTS_DIR; };
-		700BE6E41D4BDEC0004F20D3 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		700BE6ED1D4BDF70004F20D3 /* FlockFlockClientShared.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlockFlockClientShared.h; path = ../../FlockFlockKext/FlockFlock/FlockFlockClientShared.h; sourceTree = "<group>"; };
+		7079AC381D53A876001595BB /* FlockFlockUserAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlockFlockUserAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7079AC3B1D53A876001595BB /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		7079AC3C1D53A876001595BB /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		7079AC3F1D53A876001595BB /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		7079AC441D53A876001595BB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		7079AC491D53A876001595BB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7079AC4E1D53A876001595BB /* FlockFlockUserAgentTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlockFlockUserAgentTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7079AC521D53A876001595BB /* FlockFlockUserAgentTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FlockFlockUserAgentTests.m; sourceTree = "<group>"; };
+		7079AC541D53A876001595BB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7079AC591D53A876001595BB /* FlockFlockUserAgentUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FlockFlockUserAgentUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7079AC5D1D53A876001595BB /* FlockFlockUserAgentUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FlockFlockUserAgentUITests.m; sourceTree = "<group>"; };
+		7079AC5F1D53A876001595BB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7079AC6B1D53A887001595BB /* MainMenu.nib */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = MainMenu.nib; sourceTree = "<group>"; };
+		7079AC6D1D53A8B3001595BB /* StatusBarMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StatusBarMenu.h; sourceTree = "<group>"; };
+		7079AC6E1D53A8B3001595BB /* StatusBarMenu.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = StatusBarMenu.m; sourceTree = "<group>"; };
+		7079AC701D53AB20001595BB /* agent_main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = agent_main.m; sourceTree = "<group>"; };
+		7079AC721D53ACA6001595BB /* agent_main.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = agent_main.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		700BE6DE1D4BDEC0004F20D3 /* Frameworks */ = {
+		7079AC351D53A876001595BB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7079AC4B1D53A876001595BB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7079AC561D53A876001595BB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -39,41 +79,79 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		700BE6D81D4BDEC0004F20D3 = {
+		7079AC2F1D53A876001595BB = {
 			isa = PBXGroup;
 			children = (
-				700BE6E31D4BDEC0004F20D3 /* FlockFlockUserAgent */,
-				700BE6E21D4BDEC0004F20D3 /* Products */,
+				7079AC3A1D53A876001595BB /* FlockFlockUserAgent */,
+				7079AC511D53A876001595BB /* FlockFlockUserAgentTests */,
+				7079AC5C1D53A876001595BB /* FlockFlockUserAgentUITests */,
+				7079AC391D53A876001595BB /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		700BE6E21D4BDEC0004F20D3 /* Products */ = {
+		7079AC391D53A876001595BB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				700BE6E11D4BDEC0004F20D3 /* FlockFlockUserAgent */,
+				7079AC381D53A876001595BB /* FlockFlockUserAgent.app */,
+				7079AC4E1D53A876001595BB /* FlockFlockUserAgentTests.xctest */,
+				7079AC591D53A876001595BB /* FlockFlockUserAgentUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		700BE6E31D4BDEC0004F20D3 /* FlockFlockUserAgent */ = {
+		7079AC3A1D53A876001595BB /* FlockFlockUserAgent */ = {
 			isa = PBXGroup;
 			children = (
-				700BE6ED1D4BDF70004F20D3 /* FlockFlockClientShared.h */,
-				700BE6E41D4BDEC0004F20D3 /* main.m */,
+				7079AC6D1D53A8B3001595BB /* StatusBarMenu.h */,
+				7079AC6E1D53A8B3001595BB /* StatusBarMenu.m */,
+				7079AC3B1D53A876001595BB /* AppDelegate.h */,
+				7079AC3C1D53A876001595BB /* AppDelegate.m */,
+				7079AC721D53ACA6001595BB /* agent_main.h */,
+				7079AC701D53AB20001595BB /* agent_main.m */,
+				7079AC441D53A876001595BB /* Assets.xcassets */,
+				7079AC6B1D53A887001595BB /* MainMenu.nib */,
+				7079AC491D53A876001595BB /* Info.plist */,
+				7079AC3E1D53A876001595BB /* Supporting Files */,
 			);
 			path = FlockFlockUserAgent;
+			sourceTree = "<group>";
+		};
+		7079AC3E1D53A876001595BB /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				7079AC3F1D53A876001595BB /* main.m */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		7079AC511D53A876001595BB /* FlockFlockUserAgentTests */ = {
+			isa = PBXGroup;
+			children = (
+				7079AC521D53A876001595BB /* FlockFlockUserAgentTests.m */,
+				7079AC541D53A876001595BB /* Info.plist */,
+			);
+			path = FlockFlockUserAgentTests;
+			sourceTree = "<group>";
+		};
+		7079AC5C1D53A876001595BB /* FlockFlockUserAgentUITests */ = {
+			isa = PBXGroup;
+			children = (
+				7079AC5D1D53A876001595BB /* FlockFlockUserAgentUITests.m */,
+				7079AC5F1D53A876001595BB /* Info.plist */,
+			);
+			path = FlockFlockUserAgentUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		700BE6E01D4BDEC0004F20D3 /* FlockFlockUserAgent */ = {
+		7079AC371D53A876001595BB /* FlockFlockUserAgent */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 700BE6E81D4BDEC0004F20D3 /* Build configuration list for PBXNativeTarget "FlockFlockUserAgent" */;
+			buildConfigurationList = 7079AC621D53A876001595BB /* Build configuration list for PBXNativeTarget "FlockFlockUserAgent" */;
 			buildPhases = (
-				700BE6DD1D4BDEC0004F20D3 /* Sources */,
-				700BE6DE1D4BDEC0004F20D3 /* Frameworks */,
-				700BE6DF1D4BDEC0004F20D3 /* CopyFiles */,
+				7079AC341D53A876001595BB /* Sources */,
+				7079AC351D53A876001595BB /* Frameworks */,
+				7079AC361D53A876001595BB /* Resources */,
 			);
 			buildRules = (
 			);
@@ -81,53 +159,158 @@
 			);
 			name = FlockFlockUserAgent;
 			productName = FlockFlockUserAgent;
-			productReference = 700BE6E11D4BDEC0004F20D3 /* FlockFlockUserAgent */;
-			productType = "com.apple.product-type.tool";
+			productReference = 7079AC381D53A876001595BB /* FlockFlockUserAgent.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7079AC4D1D53A876001595BB /* FlockFlockUserAgentTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7079AC651D53A876001595BB /* Build configuration list for PBXNativeTarget "FlockFlockUserAgentTests" */;
+			buildPhases = (
+				7079AC4A1D53A876001595BB /* Sources */,
+				7079AC4B1D53A876001595BB /* Frameworks */,
+				7079AC4C1D53A876001595BB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7079AC501D53A876001595BB /* PBXTargetDependency */,
+			);
+			name = FlockFlockUserAgentTests;
+			productName = FlockFlockUserAgentTests;
+			productReference = 7079AC4E1D53A876001595BB /* FlockFlockUserAgentTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7079AC581D53A876001595BB /* FlockFlockUserAgentUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7079AC681D53A876001595BB /* Build configuration list for PBXNativeTarget "FlockFlockUserAgentUITests" */;
+			buildPhases = (
+				7079AC551D53A876001595BB /* Sources */,
+				7079AC561D53A876001595BB /* Frameworks */,
+				7079AC571D53A876001595BB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7079AC5B1D53A876001595BB /* PBXTargetDependency */,
+			);
+			name = FlockFlockUserAgentUITests;
+			productName = FlockFlockUserAgentUITests;
+			productReference = 7079AC591D53A876001595BB /* FlockFlockUserAgentUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		700BE6D91D4BDEC0004F20D3 /* Project object */ = {
+		7079AC301D53A876001595BB /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0730;
 				ORGANIZATIONNAME = "Jonathan Zdziarski";
 				TargetAttributes = {
-					700BE6E01D4BDEC0004F20D3 = {
+					7079AC371D53A876001595BB = {
 						CreatedOnToolsVersion = 7.3;
+					};
+					7079AC4D1D53A876001595BB = {
+						CreatedOnToolsVersion = 7.3;
+						TestTargetID = 7079AC371D53A876001595BB;
+					};
+					7079AC581D53A876001595BB = {
+						CreatedOnToolsVersion = 7.3;
+						TestTargetID = 7079AC371D53A876001595BB;
 					};
 				};
 			};
-			buildConfigurationList = 700BE6DC1D4BDEC0004F20D3 /* Build configuration list for PBXProject "FlockFlockUserAgent" */;
+			buildConfigurationList = 7079AC331D53A876001595BB /* Build configuration list for PBXProject "FlockFlockUserAgent" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				Base,
 			);
-			mainGroup = 700BE6D81D4BDEC0004F20D3;
-			productRefGroup = 700BE6E21D4BDEC0004F20D3 /* Products */;
+			mainGroup = 7079AC2F1D53A876001595BB;
+			productRefGroup = 7079AC391D53A876001595BB /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				700BE6E01D4BDEC0004F20D3 /* FlockFlockUserAgent */,
+				7079AC371D53A876001595BB /* FlockFlockUserAgent */,
+				7079AC4D1D53A876001595BB /* FlockFlockUserAgentTests */,
+				7079AC581D53A876001595BB /* FlockFlockUserAgentUITests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		7079AC361D53A876001595BB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7079AC451D53A876001595BB /* Assets.xcassets in Resources */,
+				7079AC6C1D53A887001595BB /* MainMenu.nib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7079AC4C1D53A876001595BB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7079AC571D53A876001595BB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
-		700BE6DD1D4BDEC0004F20D3 /* Sources */ = {
+		7079AC341D53A876001595BB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				700BE6E51D4BDEC0004F20D3 /* main.m in Sources */,
+				7079AC6F1D53A8B3001595BB /* StatusBarMenu.m in Sources */,
+				7079AC401D53A876001595BB /* main.m in Sources */,
+				7079AC711D53AB20001595BB /* agent_main.m in Sources */,
+				7079AC3D1D53A876001595BB /* AppDelegate.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7079AC4A1D53A876001595BB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7079AC531D53A876001595BB /* FlockFlockUserAgentTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7079AC551D53A876001595BB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7079AC5E1D53A876001595BB /* FlockFlockUserAgentUITests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		7079AC501D53A876001595BB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7079AC371D53A876001595BB /* FlockFlockUserAgent */;
+			targetProxy = 7079AC4F1D53A876001595BB /* PBXContainerItemProxy */;
+		};
+		7079AC5B1D53A876001595BB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7079AC371D53A876001595BB /* FlockFlockUserAgent */;
+			targetProxy = 7079AC5A1D53A876001595BB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
-		700BE6E61D4BDEC0004F20D3 /* Debug */ = {
+		7079AC601D53A876001595BB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -164,14 +347,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx10.10;
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
-		700BE6E71D4BDEC0004F20D3 /* Release */ = {
+		7079AC611D53A876001595BB /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -202,48 +385,128 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				SDKROOT = macosx10.10;
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
-		700BE6E91D4BDEC0004F20D3 /* Debug */ = {
+		7079AC631D53A876001595BB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FlockFlockUserAgent/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zdziarski.FlockFlockUserAgent;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
-		700BE6EA1D4BDEC0004F20D3 /* Release */ = {
+		7079AC641D53A876001595BB /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FlockFlockUserAgent/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zdziarski.FlockFlockUserAgent;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		7079AC661D53A876001595BB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FlockFlockUserAgentTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.zdziarski.FlockFlockUserAgentTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FlockFlockUserAgent.app/Contents/MacOS/FlockFlockUserAgent";
+			};
+			name = Debug;
+		};
+		7079AC671D53A876001595BB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FlockFlockUserAgentTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.zdziarski.FlockFlockUserAgentTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FlockFlockUserAgent.app/Contents/MacOS/FlockFlockUserAgent";
+			};
+			name = Release;
+		};
+		7079AC691D53A876001595BB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FlockFlockUserAgentUITests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.zdziarski.FlockFlockUserAgentUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_TARGET_NAME = FlockFlockUserAgent;
+			};
+			name = Debug;
+		};
+		7079AC6A1D53A876001595BB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FlockFlockUserAgentUITests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.zdziarski.FlockFlockUserAgentUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_TARGET_NAME = FlockFlockUserAgent;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		700BE6DC1D4BDEC0004F20D3 /* Build configuration list for PBXProject "FlockFlockUserAgent" */ = {
+		7079AC331D53A876001595BB /* Build configuration list for PBXProject "FlockFlockUserAgent" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				700BE6E61D4BDEC0004F20D3 /* Debug */,
-				700BE6E71D4BDEC0004F20D3 /* Release */,
+				7079AC601D53A876001595BB /* Debug */,
+				7079AC611D53A876001595BB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		700BE6E81D4BDEC0004F20D3 /* Build configuration list for PBXNativeTarget "FlockFlockUserAgent" */ = {
+		7079AC621D53A876001595BB /* Build configuration list for PBXNativeTarget "FlockFlockUserAgent" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				700BE6E91D4BDEC0004F20D3 /* Debug */,
-				700BE6EA1D4BDEC0004F20D3 /* Release */,
+				7079AC631D53A876001595BB /* Debug */,
+				7079AC641D53A876001595BB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7079AC651D53A876001595BB /* Build configuration list for PBXNativeTarget "FlockFlockUserAgentTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7079AC661D53A876001595BB /* Debug */,
+				7079AC671D53A876001595BB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7079AC681D53A876001595BB /* Build configuration list for PBXNativeTarget "FlockFlockUserAgentUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7079AC691D53A876001595BB /* Debug */,
+				7079AC6A1D53A876001595BB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 700BE6D91D4BDEC0004F20D3 /* Project object */;
+	rootObject = 7079AC301D53A876001595BB /* Project object */;
 }

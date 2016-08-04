@@ -59,6 +59,7 @@ typedef FlockFlockPolicy FlockFlockPolicyHierarchy;
 
 #define FFQ_ACCESS  0x0100
 #define FFQ_SECKEY  0x0101
+#define FFQ_STOPPED 0x0102
 
 struct policy_query {
     pid_t pid;
@@ -74,6 +75,12 @@ struct policy_response {
     uint32_t response;
     uint32_t response_type;
     char skey[SKEY_LEN];
+};
+
+struct ff_basic_msg /* generic mach message */
+{
+    mach_msg_header_t header;
+    uint32_t query_type;
 };
 
 struct policy_query_msg

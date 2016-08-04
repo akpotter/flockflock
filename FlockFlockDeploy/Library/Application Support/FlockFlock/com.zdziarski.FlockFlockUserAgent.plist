@@ -8,7 +8,7 @@
 	<string>com.zdziarski.FlockFlockUserAgent</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Library/Application Support/FlockFlock/FlockFlockUserAgent</string>
+		<string>/Library/Application Support/FlockFlock/FlockFlockUserAgent.app/Contents/MacOS/FlockFlockUserAgent</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

@@ -1,5 +1,5 @@
 //
-//  main.m
+//  AppDelegate.h
 //  FlockFlockUserAgent
 //
 //  Created by Jonathan Zdziarski on 8/4/16.
@@ -8,6 +8,8 @@
 
 #import <Cocoa/Cocoa.h>
 
-int main(int argc, const char * argv[]) {
-    return NSApplicationMain(argc, argv);
-}
+@interface AppDelegate : NSObject <NSApplicationDelegate>
+
+
+@end
+

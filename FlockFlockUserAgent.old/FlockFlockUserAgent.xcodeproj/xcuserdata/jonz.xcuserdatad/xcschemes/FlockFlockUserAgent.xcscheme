@@ -14,8 +14,8 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7079AC371D53A876001595BB"
-               BuildableName = "FlockFlockUserAgent.app"
+               BlueprintIdentifier = "700BE6E01D4BDEC0004F20D3"
+               BuildableName = "FlockFlockUserAgent"
                BlueprintName = "FlockFlockUserAgent"
                ReferencedContainer = "container:FlockFlockUserAgent.xcodeproj">
             </BuildableReference>
@@ -28,32 +28,12 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7079AC4D1D53A876001595BB"
-               BuildableName = "FlockFlockUserAgentTests.xctest"
-               BlueprintName = "FlockFlockUserAgentTests"
-               ReferencedContainer = "container:FlockFlockUserAgent.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7079AC581D53A876001595BB"
-               BuildableName = "FlockFlockUserAgentUITests.xctest"
-               BlueprintName = "FlockFlockUserAgentUITests"
-               ReferencedContainer = "container:FlockFlockUserAgent.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7079AC371D53A876001595BB"
-            BuildableName = "FlockFlockUserAgent.app"
+            BlueprintIdentifier = "700BE6E01D4BDEC0004F20D3"
+            BuildableName = "FlockFlockUserAgent"
             BlueprintName = "FlockFlockUserAgent"
             ReferencedContainer = "container:FlockFlockUserAgent.xcodeproj">
          </BuildableReference>
@@ -75,8 +55,8 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7079AC371D53A876001595BB"
-            BuildableName = "FlockFlockUserAgent.app"
+            BlueprintIdentifier = "700BE6E01D4BDEC0004F20D3"
+            BuildableName = "FlockFlockUserAgent"
             BlueprintName = "FlockFlockUserAgent"
             ReferencedContainer = "container:FlockFlockUserAgent.xcodeproj">
          </BuildableReference>
@@ -94,8 +74,8 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7079AC371D53A876001595BB"
-            BuildableName = "FlockFlockUserAgent.app"
+            BlueprintIdentifier = "700BE6E01D4BDEC0004F20D3"
+            BuildableName = "FlockFlockUserAgent"
             BlueprintName = "FlockFlockUserAgent"
             ReferencedContainer = "container:FlockFlockUserAgent.xcodeproj">
          </BuildableReference>

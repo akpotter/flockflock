@@ -6,6 +6,6 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 VERSION=$1
-pkgbuild --root `pwd`/Library --scripts pkgbuild-scripts --identifier com.zdziarski.FlockFlock --version $VERSION --ownership recommended --install-location /Library FlockFlock.pkg
+pkgbuild --root `pwd`/Library --scripts pkgbuild-scripts --identifier com.zdziarski.FlockFlock --version $VERSION --ownership recommended --install-location /Library FlockFlock-$VERSION.pkg
 
-codesign -fs "Mac Developer: Jonathan Zdziarski" FlockFlock.pkg 
+codesign -fs "Mac Developer: Jonathan Zdziarski" FlockFlock-$VERSION.pkg 

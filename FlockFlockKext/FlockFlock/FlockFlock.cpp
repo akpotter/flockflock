@@ -300,6 +300,7 @@ bool com_zdziarski_driver_FlockFlock::stopFilter(unsigned char *key)
     
     IOLockLock(lock);
     if (filterActive == true) {
+        IOLog("FlockFlock::stopFilter unloading policy");
         kern_return_t kr = _mac_policy_unregister_internal(policyHandle);
         if (kr == KERN_SUCCESS) {
             filterActive = false;
@@ -1021,10 +1022,30 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
 }
 
 
+int com_zdziarski_driver_FlockFlock::sendStopNotice() {
+    struct ff_basic_msg message;
+    int ret;
+    
+    IOLog("FlockFlock::sendStopNotice\n");
+    message.header.msgh_remote_port = notificationPort;
+    message.header.msgh_local_port = MACH_PORT_NULL;
+    message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
+    message.header.msgh_size = sizeof(message);
+    message.header.msgh_id = 0;
+    message.query_type = FFQ_STOPPED;
+    
+    ret = mach_msg_send_from_kernel(&message.header, sizeof(message));
+    IOLog("FlockFlock::sendStopNotice: send returned %d\n", ret);
+    return ret;
+}
+
 void com_zdziarski_driver_FlockFlock::stop(IOService *provider)
 {
     bool active;
+
     IOLog("FlockFlock::stop\n");
+    
+    sendStopNotice();
     
     IOLockLock(lock);
     shouldStop = true;
@@ -1033,11 +1054,11 @@ void com_zdziarski_driver_FlockFlock::stop(IOService *provider)
     
     stopPersistence();
     kauth_unlisten_scope(kauthListener);
-
+    
     if (active == true) {
         stopFilter(skey);
     }
-        
+
     super::stop(provider);
 }
 
@@ -1045,7 +1066,9 @@ void com_zdziarski_driver_FlockFlock::free(void)
 {
     struct pid_path *ptr=NULL, *next;
     struct posix_spawn_map *mptr=NULL, *mnext;
+
     IOLog("IOKitTest::free\n");
+
     clearAllRules(skey);
     
     destroyQueryContext(&policyContext);
