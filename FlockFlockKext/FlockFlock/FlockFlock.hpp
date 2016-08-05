@@ -77,6 +77,8 @@ public:
     void ff_cred_label_associate_fork(kauth_cred_t cred, proc_t proc);
     
     static int ff_get_agent_pid_static(OSObject *provider);
+    static bool ff_should_persist(OSObject *provider);
+
     int ff_evaluate_vnode_check_open(struct policy_query *);
 
     /* IOUserClient methods */
@@ -112,7 +114,7 @@ public:
     uint32_t userAgentPID;
 
 private:
-    bool filterActive, shouldStop;
+    bool filterActive, shouldStop, filterInitialized;
     IOLock *lock;
     FlockFlockPolicyHierarchy policyRoot;
     FlockFlockPolicy lastPolicyAdded;

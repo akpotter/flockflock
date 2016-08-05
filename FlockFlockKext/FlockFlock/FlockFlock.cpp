@@ -19,6 +19,8 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 #define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
 #define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
 #define CONFIG "/.flockflockrc"
+#define PERSISTENCE
+#define HARD_PERSISTENCE
 
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 
@@ -58,6 +60,9 @@ int _ff_eval_vnode(struct vnode *vp)
     
     if (!vp)
         return 0;
+
+    if (false == com_zdziarski_driver_FlockFlock::ff_should_persist(com_zdziarski_driver_FlockFlock_provider))
+        return 0;
     
     if (! vn_getpath(vp, target_path, &target_len))
     {
@@ -88,6 +93,8 @@ int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int si
 {
     if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
+        if (false == com_zdziarski_driver_FlockFlock::ff_should_persist(com_zdziarski_driver_FlockFlock_provider))
+            return 0;
         IOLog("FlockFlock::_ff_vnode_check_signal_internal: attempt to kill agent pid %d by pid %d\n", proc_pid(proc), proc_selfpid());
         return EACCES;
     }
@@ -152,6 +159,7 @@ bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
     pid_map            = NULL;
     map_last_insert    = NULL;
     filterActive       = false;
+    filterInitialized  = false;
     shouldStop         = false;
     userAgentPID       = 0;
     lock               = IOLockAlloc();
@@ -196,12 +204,24 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     
     persistenceHandle = { 0 };
     persistenceOps = {
-        .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal
+        .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
+        
+#ifdef PERSISTENCE
+        .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
+        .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
+        .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
+        .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
+        .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
+        .mpo_vnode_check_write  = _ff_vnode_check_write_internal
+#ifdef HARD_PERSISTENCE
+        , .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
+#endif
+#endif
     };
     
     persistenceConf = {
-        .mpc_name            = "FF Process Monitor",
-        .mpc_fullname        = "FlockFlock Process Monitor",
+        .mpc_name            = "FF Persistence-Mode",
+        .mpc_fullname        = "FlockFlock Process Monitor and Persistence Services",
         .mpc_labelnames      = NULL,
         .mpc_labelname_count = 0,
         .mpc_ops             = &persistenceOps,
@@ -300,18 +320,6 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
         policyHandle = { 0 };
         policyOps = {
             .mpo_vnode_check_open = _ff_vnode_check_open_internal,
-            
-#ifdef PERSISTENCE
-            .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
-            .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
-            .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
-            .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
-            .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
-            .mpo_vnode_check_write  = _ff_vnode_check_write_internal
-#ifdef HARD_PERSISTENCE
-            , .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
-#endif
-#endif
         };
         policyConf = {
             .mpc_name            = "FF File Monitor",
@@ -338,6 +346,8 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
         success = true;
     }
     
+    if (success == true)
+        filterInitialized = true;
     IOLockUnlock(lock);
     return success;
 }
@@ -600,6 +610,14 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey() {
 int com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(OSObject *provider) {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
     return me->userAgentPID;
+}
+
+bool com_zdziarski_driver_FlockFlock::ff_should_persist(OSObject *provider) {
+    com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
+    if (me->filterActive == false && me->filterInitialized == true)
+        return false;
+    
+    return true;
 }
 
 void com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork_static(OSObject *provider, kauth_cred_t cred, proc_t proc)
