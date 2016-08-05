@@ -280,6 +280,8 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
         } else {
             IOLog("FlockFlock::startFilter: an error occured while starting the filter: %d\n", mpr);
         }
+    } else {
+        success = true;
     }
     
     /* generate a security key and send it to the user client. the driver will only do
