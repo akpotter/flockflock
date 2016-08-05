@@ -19,8 +19,6 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 #define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
 #define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
 #define CONFIG "/.flockflockrc"
-#define PERSISTENCE
-#define HARD_PERSISTENCE
 
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 

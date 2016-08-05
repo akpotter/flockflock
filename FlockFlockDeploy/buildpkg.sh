@@ -19,3 +19,6 @@ sed -i "" -e 's/<\/installer-gui-script>/<readme mime-type=\"application\/rtf\" 
 sed -i "" -e 's/<\/installer-gui-script>/<license mime-type=\"application\/rtf\" file=\"LICENSE.rtf\"\/><\/installer-gui-script>/' distribution.plist
 
 productbuild --sign "$IDENTITY" --distribution distribution.plist --resources . --package-path FlockFlock.pkg FlockFlock-$BUILD.pkg
+rm -f FlockFlock.pkg
+rm -f distribution.plist
+

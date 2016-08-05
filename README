@@ -10,7 +10,7 @@ one, FlockFlock only works with SIP's kext checking turned off on the
 host machine, therefore FlockFlock should be used only for testing until 
 Apple provides a cert.
 
-WHY WE NEED FLOCKFLOCK
+WHY FLOCKFLOCK EXISTS
 
 One of the worst parts about being compromised is not knowing you're 
 compromised, and having your data stolen by spyware, or hijacked by
@@ -134,10 +134,14 @@ reboot
 
 PERSISTENCE 
 
-The module prevents deletion of core files. Any attempt to unload the
-kernel extension, except through recovery mode, will cause a kernel
-panic and subsequent reboot. Its data files and core files are protected
-from modification, and its processes are protected from being killed. 
+FlockFlock's kernel module prevents deletion or overwriting of core files. 
+Any attempt to unload the kernel extension, except through recovery mode, 
+will cause a kernel panic and subsequent reboot. Its data files and core 
+files are protected from modification, and its processes are protected 
+from being killed. The goal of FlockFlock's persistence routines are to
+provide a protected execution environment for FlockFlock to the point
+where one would need to gain kernel-level code execution to disable it.
+At that point,  you've got bigger problems.
 
 The user interface has a convenient menu option to disable FlockFlock so
 that it can be removed or upgraded without booting into recovery mode. This
