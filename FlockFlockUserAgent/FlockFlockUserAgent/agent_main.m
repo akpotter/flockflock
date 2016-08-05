@@ -81,6 +81,23 @@ enum FlockFlockPolicyType get_type_by_name(const char *name) {
     return kFlockFlockPolicyTypeCount;
 }
 
+void displayAlert(const char *header, const char *message)
+{
+    CFUserNotificationRef notification;
+    
+    const void* keys[] = {
+        kCFUserNotificationAlertHeaderKey,
+        kCFUserNotificationAlertMessageKey,
+    };
+    const void* values[] = {
+        CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(header), kCFStringEncodingMacRoman, kCFAllocatorDefault),
+        CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(message), kCFStringEncodingMacRoman, kCFAllocatorDefault)
+    };
+    CFDictionaryRef parameters = CFDictionaryCreate(0, keys, values,sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
+    CFUserNotificationReceiveResponse(notification, 0, NULL);
+}
+
 int getHome(char *buf, size_t len)
 {
     struct passwd* pwd = getpwuid(getuid());
@@ -98,6 +115,9 @@ int loadConfigurationFile(const char *config_path)
 {
     struct _FlockFlockClientPolicy rule;
     char homedir[PATH_MAX];
+    int success = 1;
+
+    LOG("size of policy structure is %d\n", sizeof(rule));
     
     if (getHome(homedir, PATH_MAX)) {
         LOG("unable to load configuration file: homedir unknown");
@@ -162,7 +182,11 @@ int loadConfigurationFile(const char *config_path)
             LOG("\tsuccess");
         } else {
             LOG("\tfailed");
+            success = 0;
         }
+    }
+    if (! success) {
+        displayAlert("FlockFlock: Policy Programming Error", "An unexpected error occurred while trying to program policies into FlockFlock. Your files may not be protected. Please attempt a reboot to reinitialize FlockFlock.");
     }
     fclose(file);
     return 0;
@@ -529,23 +553,6 @@ void *handlePolicyQuery(void *ptr)
     free(ptr);
     pthread_exit(0);
     return(NULL);
-}
-
-void displayAlert(const char *header, const char *message)
-{
-    CFUserNotificationRef notification;
-    
-    const void* keys[] = {
-        kCFUserNotificationAlertHeaderKey,
-        kCFUserNotificationAlertMessageKey,
-    };
-    const void* values[] = {
-        CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(header), kCFStringEncodingMacRoman, kCFAllocatorDefault),
-        CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(message), kCFStringEncodingMacRoman, kCFAllocatorDefault)
-    };
-    CFDictionaryRef parameters = CFDictionaryCreate(0, keys, values,sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
-    CFUserNotificationReceiveResponse(notification, 0, NULL);
 }
 
 void notificationCallback(CFMachPortRef unusedport, void *voidmessage, CFIndex size, void *info)
