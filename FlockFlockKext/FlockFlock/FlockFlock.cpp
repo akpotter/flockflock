@@ -516,7 +516,7 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey() {
     /* -DHARD_PERSISTENCE: Assuming a secure boot chain, will not allow the agent to reconnect if it
      * terminates, so that another process cannot masquerade as it. This is good defense against a
      * targeted attack specifically against FlockFlock, but also would require a reboot if the user
-     * logs out, or in the off change the agent crashes. Good for implementations requiring hardened
+     * logs out, or in the off chance the agent crashes. Good for implementations requiring hardened
      * single-user security, such as for journalists and political dissidents.
      */
 #ifdef HARD_PERSISTENCE
