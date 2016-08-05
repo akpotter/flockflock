@@ -238,10 +238,29 @@ bool com_zdziarski_driver_FlockFlock::stopPersistence()
     return success;
 }
 
-bool com_zdziarski_driver_FlockFlock::startFilter()
+bool com_zdziarski_driver_FlockFlock::genAgentTicket()
 {
     bool success = false;
     int r;
+    
+    IOLockLock(lock);
+    
+    /* generate a security key and send it to the user client. the driver will only do
+     * this once and will need to be rebooted or unloaded in order for a client to connect
+     * and authenticate again (if persistence is turned on)
+     */
+    
+    r = genSecurityKey();
+    if (! r)
+        success = true;
+    
+    IOLockUnlock(lock);
+    return success;
+}
+
+bool com_zdziarski_driver_FlockFlock::startFilter()
+{
+    bool success = false;
     
     IOLockLock(lock);
     if (filterActive == false) {
@@ -283,15 +302,6 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
     } else {
         success = true;
     }
-    
-    /* generate a security key and send it to the user client. the driver will only do
-     * this once and will need to be rebooted or unloaded in order for a client to connect
-     * and authenticate again.
-     */
-    
-    r = genSecurityKey();
-    if (r)
-        success = false;
     
     IOLockUnlock(lock);
     return success;

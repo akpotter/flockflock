@@ -6,7 +6,6 @@
 //  Copyright © 2016 Jonathan Zdziarski. All rights reserved.
 //
 
-
 #include <CoreFoundation/CoreFoundation.h>
 #include <Foundation/Foundation.h>
 #import <Cocoa/Cocoa.h>
@@ -124,10 +123,9 @@ int loadConfigurationFile(const char *config_path)
         char *type = strtok(NULL, "\t ");
         char *path = strtok(NULL, "\"");
         char *pname = strtok(NULL, "\"");
-        pname = strtok(NULL, "\"");
-        char *temp = strtok(NULL, "\t\n ");
+        pname = strtok(NULL, "\"\n");
         
-        LOG("adding rule: class %s type %s path \"%s\" process name \"%s\" temporary %s", class, type, path, pname, temp);
+        LOG("parsing rule: class %s type %s path \"%s\" process name \"%s\"", class, type, path, pname);
     
         rule.ruleClass = get_class_by_name(class);
         rule.ruleType = get_type_by_name(type);
@@ -137,9 +135,10 @@ int loadConfigurationFile(const char *config_path)
             if (!strncmp(path, "$HOME/", 6)) {
                 char hpath[PATH_MAX];
                 snprintf(hpath, PATH_MAX, "%s/%s", homedir, path+6);
-                strncpy(path, hpath, PATH_MAX-1);
+                strncpy(rule.rulePath, hpath, PATH_MAX-1);
+            } else {
+                strncpy(rule.rulePath, path, PATH_MAX);
             }
-            strncpy(rule.rulePath, path, PATH_MAX);
         }
         
         if (!strcmp(pname, "any")) {
@@ -148,13 +147,8 @@ int loadConfigurationFile(const char *config_path)
             strncpy(rule.processName, pname, PATH_MAX);
         }
         
-        if (!strncmp(temp, "no", 2) || atoi(temp)==0) {
-            rule.temporaryPid = 0;
-            rule.temporaryRule = 0;
-        } else {
-            rule.temporaryPid = atoi(temp);
-            rule.temporaryRule = 1;
-        }
+        rule.temporaryPid = 0;
+        rule.temporaryRule = 0;
         
         LOG("class: %d", get_class_by_name(class));
         LOG("type : %d", get_type_by_name(type));
@@ -261,7 +255,7 @@ int commitNewRuleToDisk(struct _FlockFlockClientPolicy *rule)
         LOG("unable to determine home directory");
         return errno;
     }
-    snprintf(rule_data, sizeof(rule_data), "%s %s \"%s\" \"%s\" no",
+    snprintf(rule_data, sizeof(rule_data), "%s %s \"%s\" \"%s\"",
              (rule->ruleClass == kFlockFlockPolicyClassWhitelistAllMatching) ? "allow" : "deny",
              (rule->ruleType == kFlockFlockPolicyTypeFilePath) ? "path" :
                 (rule->ruleType == kFlockFlockPolicyTypePathPrefix) ? "prefix" : "suffix",
@@ -577,7 +571,7 @@ void notificationCallback(CFMachPortRef unusedport, void *voidmessage, CFIndex s
     } else if (header->query_type == FFQ_STOPPED) {
         LOG("received filter stop notice from driver");
         [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusDisabled ];
-        displayAlert("FlockFlock has been disabled!", "The FlockFlock driver has unexpectedly been disabled. Your files are no longer protected. Please reboot.");
+        displayAlert("FlockFlock has been disabled!", "The FlockFlock driver has unexpectedly been disabled. Your files are no longer protected. Please reboot to reinitialize FlockFlock.");
     } else {
         LOG("unknown notification arrived... oh noes!");
     }
@@ -615,7 +609,7 @@ void *authenticateAndProgramModule(void *ptr) {
         };
         const void* values[] = {
             CFSTR("Critical Failure, Reboot Required"),
-            CFSTR("FlockFlock has encountered a critical failure and a reboot is required. Please reboot your system.")
+            CFSTR("FlockFlock has encountered a critical failure and a reboot is required. Please reboot your system to reinitialize FlockFlock.")
         };
         CFDictionaryRef parameters = CFDictionaryCreate(0, keys, values,sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
@@ -645,6 +639,10 @@ void *authenticateAndProgramModule(void *ptr) {
     r = sendConfiguration();
     if (r) {
         LOG("failed to send driver configuration");
+        displayAlert("Unable to configure FlockFlock", "FlockFlock was unable to be configured properly. Files are not presently protected. Please reboot to reinitialize FlockFlock.");
+    } else {
+        LOG("starting filter");
+        startFilter();
     }
     pthread_exit(0);
     return NULL;
@@ -695,9 +693,8 @@ int startDriverComms() {
             mach_port_t port = CFMachPortGetPort(notification_port);
             IOConnectSetNotificationPort(g_driverConnection, 0, port, 0);
             
-            LOG("starting filter");
-            startFilter();
-            
+            IOConnectCallMethod(g_driverConnection, kFlockFlockGenAgentTicket, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
+
             pthread_t thread;
             pthread_create(&thread, NULL, authenticateAndProgramModule, NULL);
             pthread_detach(thread);
@@ -722,9 +719,7 @@ void * agent_main(void *ptr) {
     static struct termios oldt, newt;
     bool run = true;
     
-#ifdef PERSISTENCE
     ptrace(PT_DENY_ATTACH, 0, 0, 0);
-#endif
 
     tcgetattr( STDIN_FILENO, &oldt);
     newt = oldt;

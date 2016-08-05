@@ -44,7 +44,7 @@ protected:
     static IOReturn sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args);
     static IOReturn sAuthenticate(OSObject *target, void *reference, IOExternalMethodArguments *args);
     static IOReturn sSetPID(OSObject *target, void *reference, IOExternalMethodArguments *args);
-
+    static IOReturn sGenAgentTicket(OSObject *target, void *reference, IOExternalMethodArguments *args);
 };
 
 #endif /* FlockFlockClient_hpp */

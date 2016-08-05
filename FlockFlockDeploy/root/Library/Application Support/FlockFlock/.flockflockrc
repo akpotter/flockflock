@@ -31,28 +31,28 @@
 ;         must be encapsulated in quotes to accommodate spaces
 ;         use "any" to apply to all processes
 ;         use a slash at the end to indicate a path
-;
-;     temporary_pid
-;         policy applies to the specific pid supplies
-;         use "no" to indicate this is not a temporary policy
 
 ; allow access to any files outside of /Users
-allow! prefix "/Users/" "any" no
+allow! prefix "/Users/" "any"
 
 ; allow preferences files to be read
-allow suffix ".plist" "any" no
-allow suffix ".bundle" "any" no
+allow suffix ".plist" "any"
+allow suffix ".bundle" "any"
 
 ; trust all system components (same mechanism protects this area with sip)
-allow path "any" "/System/Library/" no
-allow path "any" "/usr/libexec/" no
-allow path "any" "/usr/sbin/" no
+allow path "any" "/System/Library/"
+allow path "any" "/usr/libexec/"
+allow path "any" "/usr/sbin/"
 
 ; let unix processes read certain files
-allow suffix "/.profile" "/bin/bash" no
-allow suffix "/.bash_history" "/bin/bash" no
-allow suffix "/.CFUserTextEncoding" "any" no
+allow path "$HOME/.profile" "/bin/bash"
+allow path "$HOME/.bash_history" "/bin/bash"
+allow path "$HOME/.CFUserTextEncoding" "any"
 
 ; many processes map libs into memory that store things in the keychain
-allow suffix ".keychain-db" "any" no
-allow suffix "/login.keychain" "any" no
+allow suffix ".keychain-db" "any"
+allow suffix "/login.keychain" "any"
+
+; vim
+allow path "$HOME/.vimrc" "/usr/bin/vim"
+allow path "$HOME/.viminfo" "/usr/bin/vim"

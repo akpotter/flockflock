@@ -230,3 +230,4 @@ CHANGELOG
 	    a system-wide configuration file, append to ~/.flockflockrc
 	Support $HOME in rules for current home directory
 	Deny driver connection attempts by root (userland only)
+	Don't start filter until initial programming is complete

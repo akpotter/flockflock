@@ -86,6 +86,7 @@ public:
     void clearAllRules(unsigned char *key);
     bool setMachPort(mach_port_t port);
     bool setAgentPID(uint64_t pid, unsigned char *key);
+    bool genAgentTicket();
 
     kern_return_t addClientPolicy(FlockFlockClientPolicy policy);
 

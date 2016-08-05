@@ -19,7 +19,8 @@ com_zdziarski_driver_FlockFlockClient::sMethods[kFlockFlockRequestMethodCount] =
     { &com_zdziarski_driver_FlockFlockClient::sStartFilter, 0, 0, 0, 0 },
     { &com_zdziarski_driver_FlockFlockClient::sStopFilter, 0, SKEY_LEN, 0, 0 },
     { &com_zdziarski_driver_FlockFlockClient::sRespond, 0, sizeof(struct policy_response), 0, 0 },
-    { &com_zdziarski_driver_FlockFlockClient::sSetPID, 1, SKEY_LEN, 0, 0 }
+    { &com_zdziarski_driver_FlockFlockClient::sSetPID, 1, SKEY_LEN, 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sGenAgentTicket, 0, 0, 0, 0 }
 };
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args)
@@ -44,8 +45,6 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sSetPID(OSObject *target, void *
     me->m_driver->setAgentPID(args->scalarInput[0], (unsigned char *)args->structureInput);
     return KERN_SUCCESS;
 }
-
-
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sClearConfiguration(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
@@ -74,6 +73,16 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sAddClientPolicy(OSObject *targe
     
     return me->m_driver->addClientPolicy(clientPolicy);
 }
+
+IOReturn com_zdziarski_driver_FlockFlockClient::sGenAgentTicket(OSObject *target, void *reference, IOExternalMethodArguments *args)
+{
+    com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
+    bool success = me->m_driver->genAgentTicket();
+    if (success == true)
+        return KERN_SUCCESS;
+    return KERN_FAILURE;
+}
+
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sStartFilter(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
