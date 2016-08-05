@@ -123,6 +123,7 @@ bool com_zdziarski_driver_FlockFlockClient::initWithTask(task_t owningTask, void
     if (ret == kIOReturnSuccess)
     {
         m_taskIsAdmin = true;
+        return false;
     }
     
     return true;

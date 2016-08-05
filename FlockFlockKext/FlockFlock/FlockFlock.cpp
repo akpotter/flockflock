@@ -13,8 +13,11 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
 #define KMOD_PATH "/Library/Extensions/FlockFlock.kext"
 #define SUPPORT_PATH "/Library/Application Support/FlockFlock"
+#define APP_PATH "/Applications/FlockFlockUserAgent.app"
 #define LAUNCHD_AGENT "com.zdziarski.FlockFlockUserAgent.plist"
 #define CONFIG "/.flockflockrc"
+
+#define PERSISTENCE
 
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 
@@ -63,6 +66,8 @@ int _ff_eval_vnode(struct vnode *vp)
         if (!strncmp(target_path, KMOD_PATH, strlen(KMOD_PATH)))
             ret = EACCES;
         else if (!strncmp(target_path, SUPPORT_PATH, strlen(SUPPORT_PATH)))
+            ret = EACCES;
+        else if (!strncmp(target_path, APP_PATH, strlen(APP_PATH)))
             ret = EACCES;
         else if (!strncmp(target_path + (target_len - strlen(LAUNCHD_AGENT)), LAUNCHD_AGENT, strlen(LAUNCHD_AGENT)))
             ret = EACCES;
