@@ -17,6 +17,7 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 #define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
 #define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
 #define CONFIG "/.flockflockrc"
+#define PERSISTENCE
 
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 
@@ -84,7 +85,11 @@ int _ff_eval_vnode(struct vnode *vp)
 
 int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int signum)
 {
-    if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return EACCES;
+    if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    {
+        IOLog("FlockFlock::_ff_vnode_check_signal_internal: attempt to kill agent pid %d by pid %d\n", proc_pid(proc), proc_selfpid());
+        return EACCES;
+    }
     return 0;
 }
 
@@ -274,8 +279,10 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
             .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
             .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
             .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
-            .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
-            .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
+            .mpo_vnode_check_write  = _ff_vnode_check_write_internal
+#ifdef HARD_PERSISTENCE
+            , .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
+#endif
 #endif
         };
         policyConf = {
