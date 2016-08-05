@@ -17,8 +17,6 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 #define LAUNCHD_AGENT "com.zdziarski.FlockFlockUserAgent.plist"
 #define CONFIG "/.flockflockrc"
 
-#define PERSISTENCE
-
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 
 extern "C" {
