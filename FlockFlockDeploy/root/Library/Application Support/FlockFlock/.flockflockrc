@@ -1,5 +1,5 @@
 ; .flockflockrc 
-; configuration file for file access policy
+; system-wide configuration file for file access policy
 ;
 ; format:
 ;     policy_class policy_type path_component process_name temporary_pid
@@ -56,5 +56,3 @@ allow suffix "/.CFUserTextEncoding" "any" no
 ; many processes map libs into memory that store things in the keychain
 allow suffix ".keychain-db" "any" no
 allow suffix "/login.keychain" "any" no
-
-; user-defined rules will be added here

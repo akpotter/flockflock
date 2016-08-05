@@ -48,6 +48,12 @@ LOG_ (const char *func, const char *err, ... )
     vsnprintf (debug_text, sizeof(debug_text), err, args);
     va_end (args);
     fprintf(stderr, "%s[%d] %s\n", func, getpid(), debug_text);
+    
+    FILE *tmp = fopen("/tmp/FlockFlockUserAgent.log", "a");
+    if (tmp) {
+        fprintf(tmp, "%s[%d] %s\n", func, getpid(), debug_text);
+        fclose(tmp);
+    }
 }
 
 io_connect_t g_driverConnection;
@@ -76,59 +82,38 @@ enum FlockFlockPolicyType get_type_by_name(const char *name) {
     return kFlockFlockPolicyTypeCount;
 }
 
-int sendConfiguration()
+int getHome(char *buf, size_t len)
 {
-    char path[PATH_MAX];
-    char *home;
+    struct passwd* pwd = getpwuid(getuid());
+    if (pwd) {
+        strncpy(buf, pwd->pw_dir, len-1);
+        LOG("home directory is %s", buf);
+        return 0;
+    }
+    
+    LOG("unable to determine home directory");
+    return errno;
+}
+
+int loadConfigurationFile(const char *config_path)
+{
     struct _FlockFlockClientPolicy rule;
+    char homedir[PATH_MAX];
     
-    LOG("clearing old configuration");
-    kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestClearConfiguration, NULL, 0, g_skey, SKEY_LEN, NULL, NULL, NULL, NULL);
-    if (kr != KERN_SUCCESS) {
-        LOG("failed to clear old configuration, aborting");
-        return E_FAIL;
-    }
-    
-    home = getenv("HOME");
-    if (! home) {
-        struct passwd* pwd = getpwuid(getuid());
-        if (pwd)
-            home = pwd->pw_dir;
-    }
-    if (home) {
-        snprintf(path, sizeof(path), "%s/.flockflockrc", home);
-    } else {
-        LOG("unable to determine home directory");
+    if (getHome(homedir, PATH_MAX)) {
+        LOG("unable to load configuration file: homedir unknown");
         return errno;
     }
     
-    LOG("opening configuration file");
-    FILE *file = fopen(path, "r");
+    LOG("opening configuration file %s", config_path);
+    FILE *file = fopen(config_path, "r");
     char buf[2048];
     if (!file) {
-        LOG("no user config found, opening default");
-        file = fopen(DEFAULT_FLOCKFLOCKRC, "r");
-        if (file) {
-            FILE *out = fopen(path, "w");
-            if (!out) {
-                LOG("unable to open '%s' for writing: %s (%d)", path, strerror(errno), errno);
-                return errno;
-            }
-            while((fgets(buf, sizeof(buf), file))!=NULL) {
-                fprintf(out, "%s", buf);
-            }
-            fclose(out);
-            fclose(file);
-            file = fopen(path, "r");
-        }
-        
-        if (!file) {
-            LOG("unable to open '%s' for reading: %s (%d)", path, strerror(errno), errno);
-            return errno;
-        }
+        LOG("unable to open '%s' for reading: %s(%d)", config_path, strerror(errno), errno);
+        return errno;
     }
-
-    LOG("reading config");
+    
+    LOG("reading configuration %s", config_path);
     while((fgets(buf, sizeof(buf), file))!=NULL) {
         if (buf[0] == '#' || buf[0] == ';')
             continue;
@@ -149,6 +134,11 @@ int sendConfiguration()
         if (!strcmp(path, "any")) {
             rule.rulePath[0] = 0;
         } else {
+            if (!strncmp(path, "$HOME/", 6)) {
+                char hpath[PATH_MAX];
+                snprintf(hpath, PATH_MAX, "%s/%s", homedir, path+6);
+                strncpy(path, hpath, PATH_MAX-1);
+            }
             strncpy(rule.rulePath, path, PATH_MAX);
         }
         
@@ -181,6 +171,31 @@ int sendConfiguration()
         }
     }
     fclose(file);
+    return 0;
+}
+
+int sendConfiguration()
+{
+    char path[PATH_MAX];
+    char home[PATH_MAX];
+    
+    LOG("clearing old configuration");
+    kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestClearConfiguration, NULL, 0, g_skey, SKEY_LEN, NULL, NULL, NULL, NULL);
+    if (kr != KERN_SUCCESS) {
+        LOG("failed to clear old configuration, aborting");
+        return E_FAIL;
+    }
+    
+    if (! getHome(home, PATH_MAX)) {
+        snprintf(path, sizeof(path), "%s/.flockflockrc", home);
+    } else {
+        return errno;
+    }
+    
+    if (loadConfigurationFile(DEFAULT_FLOCKFLOCKRC))
+        return errno;
+    
+    loadConfigurationFile(path);
     return 0;
 }
 
