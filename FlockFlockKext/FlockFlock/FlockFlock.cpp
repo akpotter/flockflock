@@ -13,11 +13,12 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
 #define KMOD_PATH "/Library/Extensions/FlockFlock.kext"
 #define SUPPORT_PATH "/Library/Application Support/FlockFlock"
+#define APP_BINARY "/Applications/FlockFlockUserAgent.app/Contents/MacOS/FlockFlockUserAgent"
+#define APP_PATH_FOLDER "/Applications/FlockFlockUserAgent.app/"
 #define APP_PATH "/Applications/FlockFlockUserAgent.app"
 #define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
 #define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
 #define CONFIG "/.flockflockrc"
-#define PERSISTENCE
 
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 
@@ -245,10 +246,36 @@ bool com_zdziarski_driver_FlockFlock::stopPersistence()
 
 bool com_zdziarski_driver_FlockFlock::genAgentTicket()
 {
+#ifdef HARD_PERSISTENCE
+    char proc_path[PATH_MAX];
+    pid_path *ptr;
+#endif
     bool success = false;
     int r;
     
     IOLockLock(lock);
+    
+    IOLog("FlockFlock::genAgentTicket\n");
+    
+#ifdef HARD_PERSISTENCE
+    /* pull out the proc path from cache */
+    ptr = pid_root;
+    proc_path[0] = 0;
+    while(ptr) {
+        if (ptr->pid == proc_selfpid()) {
+            strncpy(proc_path, ptr->path, PATH_MAX-1);
+            break;
+        }
+        ptr = ptr->next;
+    }
+    
+    IOLog("FlockFlock::genAgentTicket: process path is '%s'\n", proc_path);
+    if (strncmp(proc_path, APP_PATH_FOLDER, PATH_MAX) && strncmp(proc_path, APP_BINARY, PATH_MAX)) {
+        IOLog("FlockFlock::genAgentTicket: refusing to send ticket to pid %d running at unauthoried path %s\n", proc_selfpid(), proc_path);
+        IOLockUnlock(lock);
+        return false;
+    }
+#endif
     
     /* generate a security key and send it to the user client. the driver will only do
      * this once and will need to be rebooted or unloaded in order for a client to connect
@@ -260,6 +287,7 @@ bool com_zdziarski_driver_FlockFlock::genAgentTicket()
         success = true;
     
     IOLockUnlock(lock);
+    
     return success;
 }
 
@@ -742,7 +770,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
                 if (strncmp(query->process_name, rule->data.processName, rproc_len)) {
                     match = false;
                 }
-            } else if (strcmp(query->process_name, rule->data.processName)) { /* full path */
+            } else if (strncmp(query->process_name, rule->data.processName, PATH_MAX)) { /* full path */
                 match = false;
             }
         }
@@ -764,7 +792,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
                                 match = false;
                             }
                         }
-                    } else if (strcmp(rule->data.rulePath, query->path)) { /* full path */
+                    } else if (strncmp(rule->data.rulePath, query->path, PATH_MAX)) { /* full path */
                         match = false;
                     }
                     break;
@@ -773,7 +801,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
                     if (rpath_len == 0 || suffix_pos < 0 || suffix_pos > strlen(query->path) || path_len <= rpath_len) {
                         match = false;
                     } else {
-                        if (strcmp(query->path + (path_len - rpath_len), rule->data.rulePath))
+                        if (strncmp(query->path + (path_len - rpath_len), rule->data.rulePath, PATH_MAX))
                             match = false;
                     }
                     break;
@@ -975,7 +1003,6 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         query->path[PATH_MAX-1] = 0;
     
     /* pull out the proc path from cache */
-    
     ptr = pid_root;
     proc_path[0] = 0;
     while(ptr) {

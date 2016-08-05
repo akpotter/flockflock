@@ -111,7 +111,7 @@ int loadConfigurationFile(const char *config_path)
         LOG("unable to open '%s' for reading: %s(%d)", config_path, strerror(errno), errno);
         return errno;
     }
-    
+
     LOG("reading configuration %s", config_path);
     while((fgets(buf, sizeof(buf), file))!=NULL) {
         if (buf[0] == '#' || buf[0] == ';')
