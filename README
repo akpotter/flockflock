@@ -227,7 +227,7 @@ CHANGELOG
 	Fixed a bug causing ~/Library/LaunchAgents to not get creaetd
 0.0.10 	Don't blow up the agent on unicode filenames
 	Rolled agent into an app with status bar icon for enable/disable
-0.0.11* Fixed packaging issues and macOS relocation, etc
+0.0.11  Fixed packaging issues and macOS relocation, etc
         Made small change to help hide agent from dock better
         Nicer icon for the status bar
 0.0.12	Treat /Library/Application Support/FlockFlock/.flockflockrc as a
@@ -237,4 +237,4 @@ CHANGELOG
 	Don't start filter until initial programming is complete
 0.0.13	Fixed a bug causing certain background tasks to not be tracked
 0.0.14  Cleanup from 0.0.13 and ppid full path tracking
-0.0.15	Better spawn tracking
+0.0.15*	Various tweaks
