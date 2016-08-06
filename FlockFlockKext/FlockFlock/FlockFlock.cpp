@@ -1029,6 +1029,12 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         ptr = ptr->next;
     }
     
+    if (NULL == ptr) {
+        char proc[PATH_MAX];
+        proc_selfname(proc, PATH_MAX-1);
+        snprintf(proc_path, sizeof(proc_path), "Background Process '%s'", proc);
+    }
+    
     IOLockUnlock(lock);
 
     /* process hierarchy, consolidated by tracking posix_spawn 
