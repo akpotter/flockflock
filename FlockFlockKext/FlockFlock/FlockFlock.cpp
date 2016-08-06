@@ -51,6 +51,13 @@ void _ff_cred_label_associate_fork_internal(kauth_cred_t cred, proc_t proc)
     com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork_static(com_zdziarski_driver_FlockFlock_provider, cred, proc);
 }
 
+/* hooked to provide path to current pid after exec */
+int _ff_cred_label_update_execve_internal(kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp)
+{
+    
+    return com_zdziarski_driver_FlockFlock::ff_cred_label_update_execve_static(com_zdziarski_driver_FlockFlock_provider, old_cred, new_cred, p, vp, offset, scriptvp, vnodelabel, scriptvnodelabel, execlabel, csflags, macpolicyattr, macpolicyattrlen, disjointp);
+}
+
 
 /* persistence functions
  * these routines are here to prevent any process from tampering with core files needed by
@@ -210,7 +217,8 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     persistenceHandle = { 0 };
     persistenceOps = {
         .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
-        .mpo_vnode_check_exec = _ff_vnode_check_exec_internal
+        .mpo_cred_label_update_execve = _ff_cred_label_update_execve_internal,
+//        .mpo_vnode_check_exec = _ff_vnode_check_exec_internal
 #ifdef PERSISTENCE
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
@@ -631,6 +639,31 @@ void com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork_static(OSObje
     return me->ff_cred_label_associate_fork(cred, proc);
 }
 
+int com_zdziarski_driver_FlockFlock::ff_cred_label_update_execve_static(OSObject *provider, kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp)
+{
+    com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
+    return me->ff_cred_label_update_execve(old_cred, new_cred, p, vp, offset, scriptvp, vnodelabel, scriptvnodelabel, execlabel, csflags, macpolicyattr, macpolicyattrlen, disjointp);
+}
+
+int com_zdziarski_driver_FlockFlock::ff_cred_label_update_execve(kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp)
+{
+    char path[PATH_MAX] = { 0 }, name[PATH_MAX] = { 0 };
+    int path_len = PATH_MAX;
+    pid_t pid = proc_pid(p);
+    pid_t ppid = proc_ppid(p);
+    uid_t uid = kauth_getuid();
+    gid_t gid = kauth_getgid();
+    uint64_t tid = thread_tid(current_thread());
+
+    proc_name(proc_pid(p), name, PATH_MAX);
+    if (vn_getpath(vp, path, &path_len) == KERN_SUCCESS) {
+        ff_shared_exec_callback(pid, ppid, uid, gid, tid, path);
+    }
+    
+    IOLog("_ff_cred_label_update_execve_internal pid %d path %s name %s\n", proc_pid(p), path, name);
+    return 0;
+}
+
 int com_zdziarski_driver_FlockFlock::ff_vnode_check_exec_static(OSObject *provider, kauth_cred_t cred, struct vnode *vp, struct vnode *scriptvp, struct label *vnodelabel,struct label *scriptlabel, struct label *execlabel,	struct componentname *cnp, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen)
 {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
@@ -902,8 +935,11 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
     IOLockUnlock(lock);
     
     if (whitelisted == true)
+    {
+        IOLog("FlockFlock::ff_vnode_check_open: allow open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
+
         return 0;
-    if (blacklisted == true) {
+    } else if (blacklisted == true) {
         IOLog("FlockFlock::ff_vnode_check_open: deny open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
         return EACCES;
     }
@@ -1128,7 +1164,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         snprintf(app_name, sizeof(app_name), "%s.app/", process_name);
         if (strncmp(q+1, process_name, strlen(process_name)) && strncmp(q+1, app_name, strlen(app_name))) {
             char via[128];
-            IOLog("process %s is child via %s(%s)\n", proc_path, process_name, app_name);
+            IOLog("process %s is via %s(%s)\n", proc_path, process_name, app_name);
             snprintf(via, sizeof(via), " via %s", process_name);
             strncat(proc_path, via, sizeof(proc_path)-1);
         }
