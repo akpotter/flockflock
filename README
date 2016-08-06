@@ -235,3 +235,4 @@ CHANGELOG
 	Support $HOME in rules for current home directory
 	Deny driver connection attempts by root (userland only)
 	Don't start filter until initial programming is complete
+0.0.13	Fixed a bug causing certain background tasks to not be tracked
