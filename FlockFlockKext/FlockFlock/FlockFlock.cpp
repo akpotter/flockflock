@@ -217,7 +217,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     persistenceHandle = { 0 };
     persistenceOps = {
         .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
-        .mpo_cred_label_update_execve = _ff_cred_label_update_execve_internal,
+//        .mpo_cred_label_update_execve = _ff_cred_label_update_execve_internal,
 //        .mpo_vnode_check_exec = _ff_vnode_check_exec_internal
 #ifdef PERSISTENCE
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
@@ -936,7 +936,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
     
     if (whitelisted == true)
     {
-        IOLog("FlockFlock::ff_vnode_check_open: allow open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
+        // IOLog("FlockFlock::ff_vnode_check_open: allow open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
 
         return 0;
     } else if (blacklisted == true) {
