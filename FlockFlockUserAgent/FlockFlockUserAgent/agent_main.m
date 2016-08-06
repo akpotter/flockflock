@@ -332,10 +332,18 @@ int promptUserForPermission(struct policy_query *query)
         strcpy(p, d);
         free(d);
     }
+    
     appPath = strdup(displayName);
     p = strstr(appPath, " via ");
     if (p) {
-        p[0] = 0;
+        if (!strncmp(appPath, "Background Process", 18)) {
+            char path[PATH_MAX];
+            strncpy(path, p+5, PATH_MAX);
+            free(appPath);
+            appPath = strdup(path);
+        } else {
+            p[0] = 0;
+        }
     }
     
     LOG("finding application icon");

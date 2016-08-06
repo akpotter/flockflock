@@ -39,11 +39,18 @@ static int _ff_kauth_callback_internal(kauth_cred_t cred, void* idata, kauth_act
     return com_zdziarski_driver_FlockFlock::ff_kauth_callback_static(com_zdziarski_driver_FlockFlock_provider, cred, idata, action, arg0, arg1, arg2, arg3);
 }
 
+/* hooked to map execution path (when kauth fails */
+int _ff_vnode_check_exec_internal(kauth_cred_t cred, struct vnode *vp, struct vnode *scriptvp, struct label *vnodelabel,struct label *scriptlabel, struct label *execlabel, struct componentname *cnp, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen)
+{
+    return com_zdziarski_driver_FlockFlock::ff_vnode_check_exec_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, scriptvp, vnodelabel, scriptlabel, execlabel, cnp, csflags, macpolicyattr, macpolicyattrlen);
+}
+
 /* hooked to map posix spawned processes back to ppid */
 void _ff_cred_label_associate_fork_internal(kauth_cred_t cred, proc_t proc)
 {
     com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork_static(com_zdziarski_driver_FlockFlock_provider, cred, proc);
 }
+
 
 /* persistence functions
  * these routines are here to prevent any process from tampering with core files needed by
@@ -203,7 +210,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     persistenceHandle = { 0 };
     persistenceOps = {
         .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
-        
+        .mpo_vnode_check_exec = _ff_vnode_check_exec_internal
 #ifdef PERSISTENCE
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
@@ -624,6 +631,35 @@ void com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork_static(OSObje
     return me->ff_cred_label_associate_fork(cred, proc);
 }
 
+int com_zdziarski_driver_FlockFlock::ff_vnode_check_exec_static(OSObject *provider, kauth_cred_t cred, struct vnode *vp, struct vnode *scriptvp, struct label *vnodelabel,struct label *scriptlabel, struct label *execlabel,	struct componentname *cnp, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen)
+{
+    com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
+    return me->ff_vnode_check_exec(cred, vp, scriptvp, vnodelabel, scriptlabel, execlabel, cnp, csflags, macpolicyattr, macpolicyattrlen);
+}
+
+int com_zdziarski_driver_FlockFlock::ff_vnode_check_exec(kauth_cred_t cred, struct vnode *vp, struct vnode *scriptvp, struct label *vnodelabel,struct label *scriptlabel, struct label *execlabel,	struct componentname *cnp, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen)
+{
+    char path[PATH_MAX] = { 0 };
+    int path_len = PATH_MAX;
+    pid_t pid = -1;
+    pid_t ppid = -1;
+    uid_t uid = -1;
+    gid_t gid = -1;
+    uint64_t tid = thread_tid(current_thread());
+
+    uid = kauth_getuid();
+    gid = kauth_getgid();
+    pid = proc_selfpid();
+    ppid = proc_selfppid();
+    
+    if (vn_getpath(vp, path, &path_len) == KERN_SUCCESS)
+    {
+        ff_shared_exec_callback(pid, ppid, uid, gid, tid, path);
+    }
+
+    return 0;
+}
+
 int com_zdziarski_driver_FlockFlock::ff_kauth_callback_static(OSObject *provider, kauth_cred_t cred, void* idata, kauth_action_t action, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
@@ -638,8 +674,6 @@ int com_zdziarski_driver_FlockFlock::ff_kauth_callback(kauth_cred_t credential, 
     uid_t uid = -1;
     gid_t gid = -1;
     uint64_t tid = thread_tid(current_thread());
-    bool posix_spawned = false;
-    struct posix_spawn_map *ptr;
     
     if(KAUTH_FILEOP_EXEC != action)
         return KAUTH_RESULT_DEFER;
@@ -650,11 +684,26 @@ int com_zdziarski_driver_FlockFlock::ff_kauth_callback(kauth_cred_t credential, 
     gid = kauth_getgid();
     pid = proc_selfpid();
     ppid = proc_selfppid();
-    
-    IOLog("ff_kauth_callback: tid %llu pid %d ppid %d path %s tid %llu #_ff_cred_label_associate_fork_internal\n", tid, pid, ppid, proc_path, tid);
 
     houseKeeping(); /* you want clean towel? */
 
+    ff_shared_exec_callback(pid, ppid, uid, gid, tid, proc_path);
+    return KAUTH_RESULT_DEFER;
+}
+
+int com_zdziarski_driver_FlockFlock::ff_shared_exec_callback(pid_t pid, pid_t ppid, uid_t uid, gid_t gid, uint64_t tid, const char *path)
+{
+    bool posix_spawned = false;
+    struct posix_spawn_map *ptr;
+    char proc_path[PATH_MAX];
+    char proc_name[PATH_MAX];
+    int name_len = PATH_MAX;
+    proc_selfname(proc_name, name_len);
+    
+    IOLog("ff_shared_exec_callback: tid %llu pid %d ppid %d path %s tid %llu name %s #_ff_cred_label_associate_fork_internal\n", tid, pid, ppid, proc_path, tid, proc_name);
+    
+    strncpy(proc_path, path, PATH_MAX-1);
+    
     IOLockLock(lock);
     ptr = pid_map;
     while(ptr) {
@@ -672,9 +721,9 @@ int com_zdziarski_driver_FlockFlock::ff_kauth_callback(kauth_cred_t credential, 
     if (posix_spawned) { /* get the parent's path */
         struct pid_path *p = pid_root;
         while(p) {
-            if (p->pid == ppid) {
+            if (p->pid == ppid && p->path[0]) {
+                IOLog("tid %llu posix_spawn detected, using parent path '%s' instead of '%s' pid %d #_ff_cred_label_associate_fork_internal\n", tid, p->path, proc_path, ppid);
                 strncpy(proc_path, p->path, PATH_MAX-1);
-                IOLog("tid %llu posix_spawn detected, using parent path %s pid %d #_ff_cred_label_associate_fork_internal\n", tid, proc_path, ppid);
                 break;
             }
             p = p->next;
@@ -724,12 +773,13 @@ int com_zdziarski_driver_FlockFlock::ff_kauth_callback(kauth_cred_t credential, 
                 }
             }
         }
+    } else {
+        IOLog("FlockFlock::ff_shared_exec_callback: lost the path for pid %d name %s\n", pid, proc_name);
     }
     IOLockUnlock(lock);
     
     return KAUTH_RESULT_DEFER;
 }
-
 
 void com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork(kauth_cred_t cred, proc_t proc)
 {
@@ -983,9 +1033,11 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
     char proc_path[PATH_MAX];
     int buflen = PATH_MAX;
     int pid = proc_selfpid();
+    int ppid = proc_selfppid();
     struct pid_path *ptr;
     int agentPID;
     char *p, *q;
+    bool havePath = false;
     
     /* if we want granularity based on threads, we can use the thread id, but
      * that also means more rules to prompt the user for, so instead we
@@ -1022,17 +1074,34 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
     ptr = pid_root;
     proc_path[0] = 0;
     while(ptr) {
-        if (ptr->pid == pid) { // && ptr->tid == tid) {
+        if (ptr->pid == pid && ptr->path[0]) { // && ptr->tid == tid) {
             strncpy(proc_path, ptr->path, PATH_MAX-1);
+            havePath = true;
+
             break;
         }
         ptr = ptr->next;
     }
     
     if (NULL == ptr) {
+        char parent[PATH_MAX] = { 0 };
+        ptr = pid_root;
+        proc_path[0] = 0;
+        while(ptr) {
+            if (ptr->pid == ppid) { // && ptr->tid == tid) {
+                strncpy(parent, ptr->path, PATH_MAX-1);
+                break;
+            }
+            ptr = ptr->next;
+        }
+        
         char proc[PATH_MAX];
         proc_selfname(proc, PATH_MAX-1);
-        snprintf(proc_path, sizeof(proc_path), "Background Process '%s'", proc);
+        if (parent[0]) {
+            snprintf(proc_path, sizeof(proc_path), "Background Process '%s' via %s", proc, parent);
+        } else {
+            snprintf(proc_path, sizeof(proc_path), "Background Process '%s'", proc);
+        }
     }
     
     IOLockUnlock(lock);
@@ -1050,7 +1119,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
             q = p;
         p++;
     }
-    if (q && q[0]) { /* q = process path filename */
+    if (havePath == true && q && q[0]) { /* q = process path filename */
         char process_name[PATH_MAX] = { 0 };
         char app_name[PATH_MAX] = { 0 }; /* .app container representation */
         

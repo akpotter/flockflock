@@ -9,7 +9,8 @@ then
 fi
 IDENTITY="Jonathan Zdziarski"
 
-pkgbuild --root `pwd`/root --scripts pkgbuild-scripts --identifier com.zdziarski.FlockFlock --version $BUILD --ownership recommended --install-location / --sign "$IDENTITY" FlockFlock.pkg
+# --scripts pkgbuild-scripts 
+pkgbuild --root `pwd`/root --identifier com.zdziarski.FlockFlock --version $BUILD --ownership recommended --install-location / --sign "$IDENTITY" FlockFlock.pkg
 
 productbuild --synthesize --product requirements.plist --package FlockFlock.pkg distribution.plist
 

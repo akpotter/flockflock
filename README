@@ -236,3 +236,4 @@ CHANGELOG
 	Deny driver connection attempts by root (userland only)
 	Don't start filter until initial programming is complete
 0.0.13	Fixed a bug causing certain background tasks to not be tracked
+0.0.14  Cleanup from 0.0.13 and ppid full path tracking
