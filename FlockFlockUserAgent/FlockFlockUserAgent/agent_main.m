@@ -357,14 +357,16 @@ int promptUserForPermission(struct policy_query *query)
     
     LOG("finding application icon for %s", appPath);
     NSImage *image = [ [ NSWorkspace sharedWorkspace ] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
+    [ image setSize: CGSizeMake(256.0, 256.0) ];
     if (image) { /* write to temp file, since we don't know where it came from */
         
         CGImageRef cgRef = [ image CGImageForProposedRect:NULL
-                                                 context:nil
-                                                   hints:nil ];
+                                                 context: nil
+                                                   hints: nil ];
         NSBitmapImageRep *imageRep = [ [ NSBitmapImageRep alloc ] initWithCGImage: cgRef ];
         [ imageRep setSize:[ image size ] ];
-        NSData *data = [ imageRep representationUsingType:NSPNGFileType properties: nil ];
+        NSDictionary *dict = [ [ NSDictionary alloc ] init ];
+        NSData *data = [ imageRep representationUsingType: NSPNGFileType properties: dict ];
         [ data writeToFile: @"/tmp/flockflock_temp.png" atomically: NO ]; /* fugly */
         base = CFSTR("/tmp/flockflock_temp.png");
     }
