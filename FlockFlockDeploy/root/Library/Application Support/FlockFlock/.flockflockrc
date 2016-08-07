@@ -59,13 +59,14 @@ allow path "$HOME/.viminfo" "/usr/bin/vim"
 ; background processes and other common things
 allow prefix "any" "Background Process 'mds' via /usr/libexec/xpcproxy"
 
-; bash does some interesting things
-allow suffix ".bash_history" "/bin/cp"
-allow suffix ".bash_history" "Background Process 'bash' via /bin/bash"
-allow suffix ".historynew" "/bin/cat"
-allow path "$HOME/.bash_sessions/" "Background Process 'bash' via /bin/bash"
-allow path "$HOME/bash_sessions/" "/bin/bash"
+; lots of things read bash history
+allow path "$HOME/.bash_history" "any"
+allow prefix "$HOME/.bash_sessions/" "any"
 
-; System Preferences
+; common user apps
 allow path "$HOME/Library/Caches/com.apple.preferencepanes.cache" "/Applications/System Preferences.app/"
+
+; common user paths
+allow prefix "$HOME/Library/Logs" "any"
+allow prefix "$HOME/Library/Preferences" "any"
 

@@ -34,7 +34,8 @@ struct mach_query_context
 };
 
 /* was going to use OSDictinoary but it's just an array too, so... */
-struct pid_path
+
+struct pid_info
 {
     uid_t uid;
     gid_t gid;
@@ -43,7 +44,8 @@ struct pid_path
     uint64_t tid;
     
     char path[PATH_MAX];
-    struct pid_path *next;
+    char name[32];
+    struct pid_info *next;
 };
 
 struct posix_spawn_map
@@ -67,6 +69,9 @@ public:
     
     /* MAC policy methods and static hooks */
     
+    static int ff_cred_label_update_execve_static(OSObject *provider, kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp);
+    int ff_cred_label_update_execve(kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp);
+
     static int ff_vnode_check_open_static(OSObject *provider, kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode);
     int ff_vnode_check_open(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode);
     
@@ -111,8 +116,9 @@ private:
     int sendStopNotice();
     int genSecurityKey();
     
-    int ff_shared_exec_callback(pid_t pid, pid_t ppid, uid_t uid, gid_t gid, uint64_t tid, const char *path, bool overwrite);
-
+    int ff_shared_exec_callback(pid_t pid, pid_t ppid, uid_t uid, gid_t gid, uint64_t tid, const char *path);
+    pid_t ff_cred_label_associate_by_pid(pid_t pid);
+    
 public:
     mach_port_t notificationPort;
     struct mach_query_context policyContext;
@@ -123,7 +129,8 @@ private:
     IOLock *lock;
     FlockFlockPolicyHierarchy policyRoot;
     FlockFlockPolicy lastPolicyAdded;
-    struct pid_path *pid_root;
+    struct pid_info *pid_cache;
+    struct pid_info *execve_cache;
     struct posix_spawn_map *pid_map, *map_last_insert;
     unsigned char skey[SKEY_LEN];
     
@@ -137,6 +144,8 @@ private:
     struct mac_policy_ops persistenceOps;
     struct mac_policy_conf persistenceConf;
     kauth_listener_t kauthListener = NULL;
+    
+    int proc_pidpathinfo(proc_t p, __unused uint64_t arg, user_addr_t buffer, uint32_t buffersize, __unused int32_t *retval);
 };
 
 #endif

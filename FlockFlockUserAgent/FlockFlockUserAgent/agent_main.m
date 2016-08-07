@@ -336,17 +336,25 @@ int promptUserForPermission(struct policy_query *query)
     appPath = strdup(displayName);
     p = strstr(appPath, " via ");
     if (p) {
-        if (!strncmp(appPath, "Background Process", 18)) {
-            char path[PATH_MAX];
-            strncpy(path, p+5, PATH_MAX);
+        char *via = p+5;
+        p[0] = 0;
+        LOG("VIA: %s", via);
+
+        if (strcasestr(via, ".app"))
+        {
+            LOG("HERE!");
+            char n[PATH_MAX];
+            strncpy(n, via, PATH_MAX);
             free(appPath);
-            appPath = strdup(path);
-        } else {
-            p[0] = 0;
+            LOG("COPIED %s", n);
+            appPath = strdup(n);
         }
     }
+    p = strstr(appPath, " (-");
+    if (p)
+        p[0] = 0;
     
-    LOG("finding application icon");
+    LOG("finding application icon for %s", appPath);
     NSImage *image = [ [ NSWorkspace sharedWorkspace ] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
     if (image) { /* write to temp file, since we don't know where it came from */
         
