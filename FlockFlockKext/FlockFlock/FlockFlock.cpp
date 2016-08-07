@@ -1235,8 +1235,10 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
     /* process hierarchy, consolidated by tracking posix_spawn here, we add "via <someprocess>" */
     IOLog("pid %d assc_pid %d path %s parent %s\n", pid, assc_pid, proc_path, parent_path);
     if (proc_path[0] && parent_path[0] && assc_pid) {
-        strncat(proc_path, " via ", PATH_MAX);
-        strncat(proc_path, parent_path, PATH_MAX);
+        if (strncmp(proc_path, parent_path, PATH_MAX)) {
+            strncat(proc_path, " via ", PATH_MAX);
+            strncat(proc_path, parent_path, PATH_MAX);
+        }
     } else if (proc_path[0] == 0 && parent_path[0]) {
         snprintf(proc_path, PATH_MAX, "%s (-%s)", parent_path, proc_name);
     }
