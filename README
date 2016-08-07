@@ -238,4 +238,5 @@ CHANGELOG
 0.0.13	Fixed a bug causing certain background tasks to not be tracked
 0.0.14  Cleanup from 0.0.13 and ppid full path tracking
 0.0.15 	Various tweaks
-0.0.16* Completely reworked process tracking and it's awesome 
+0.0.16  Completely reworked process tracking and it's awesome 
+0.0.17* Further improvements to process tracking
