@@ -297,7 +297,7 @@ int commitNewRuleToDisk(struct _FlockFlockClientPolicy *rule)
 
 int promptUserForPermission(struct policy_query *query)
 {
-    char proc_path[PATH_MAX], pproc_path[PATH_MAX];
+    char proc_path[PATH_MAX] = { 0 }, pproc_path[PATH_MAX] = { 0 }, proc_detail[PATH_MAX] = { 0 };
     int ppid = getPPID(query->pid);
     struct _FlockFlockClientPolicy rule;
     char alert_message[4096];
@@ -315,10 +315,11 @@ int promptUserForPermission(struct policy_query *query)
     int i;
     
     strncpy(proc_path, query->process_name, PATH_MAX-1);
+    proc_pidpath(query->pid, proc_detail, PATH_MAX);
     proc_pidpath(ppid, pproc_path, PATH_MAX);
     
-    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file:\n%s\n\nApplication:\n%s (%d)\n\nParent:\n%s (%d)\n",
-             query->path, proc_path, query->pid, pproc_path, ppid);
+    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file:\n%s\n\nApplication:\n%s (%d)\n(%s)\n\nParent:\n%s (%d)\n",
+             query->path, proc_path, query->pid, proc_detail, pproc_path, ppid);
     LOG("%s", alert_message);
     alert_str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(alert_message), kCFStringEncodingMacRoman, kCFAllocatorDefault);
     
@@ -741,9 +742,9 @@ int startDriverComms() {
 void * agent_main(void *ptr) {
     static struct termios oldt, newt;
     bool run = true;
-    
+#ifdef PERSISTENCE
     ptrace(PT_DENY_ATTACH, 0, 0, 0);
-
+#endif
     tcgetattr( STDIN_FILENO, &oldt);
     newt = oldt;
     newt.c_lflag &= ~(ICANON);

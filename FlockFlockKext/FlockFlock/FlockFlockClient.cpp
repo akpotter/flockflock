@@ -25,7 +25,7 @@ com_zdziarski_driver_FlockFlockClient::sMethods[kFlockFlockRequestMethodCount] =
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
-    IOLog("FlockFlockClient::sRespond");
+    IOLog("FlockFlockClient::sRespond\n");
     struct policy_response *response = (struct policy_response *)args->structureInput;
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
 
@@ -40,7 +40,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void 
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sSetPID(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
-    IOLog("FlockFlockClient::sSetPID");
+    IOLog("FlockFlockClient::sSetPID\n");
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
     me->m_driver->setAgentPID(args->scalarInput[0], (unsigned char *)args->structureInput);
     return KERN_SUCCESS;
@@ -48,7 +48,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sSetPID(OSObject *target, void *
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sClearConfiguration(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
-    IOLog("FlockFlockClient::sClearConfiguration");
+    IOLog("FlockFlockClient::sClearConfiguration\n");
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
     me->m_driver->clearAllRules((unsigned char *)args->structureInput);
     return KERN_SUCCESS;
@@ -56,7 +56,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sClearConfiguration(OSObject *ta
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sAddClientPolicy(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
-    IOLog("FlockFlockClient::sAddClientPolicy");
+    IOLog("FlockFlockClient::sAddClientPolicy\n");
 
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
     FlockFlockClientPolicy clientPolicy = (FlockFlockClientPolicy) args->structureInput;
@@ -95,7 +95,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sStartFilter(OSObject *target, v
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sStopFilter(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
-    IOLog("FlockFlockClient::sStopFilter");
+    IOLog("FlockFlockClient::sStopFilter\n");
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
     bool success = me->m_driver->stopFilter((unsigned char *)args->structureInput);
     IOLog("FlockFlockClient::sStopFilter: success = %d\n", success);

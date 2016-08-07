@@ -777,7 +777,7 @@ int com_zdziarski_driver_FlockFlock::ff_shared_exec_callback(pid_t pid, pid_t pp
     char proc_name[PATH_MAX] = { 0 };
     int name_len = PATH_MAX;
     proc_selfname(proc_name, name_len);
-    int i;
+    int i, assc_pid;
     
     
     IOLog("ff_shared_exec_callback: entry tid %llu pid %d ppid %d path %s tid %llu name %s\n", tid, pid, ppid, path, tid, proc_name);
@@ -840,6 +840,8 @@ int com_zdziarski_driver_FlockFlock::ff_shared_exec_callback(pid_t pid, pid_t pp
 
     /* add the final path and process into to the pid info cache, which should be the only
      * cache that ff_vnode_check_open will hae to check */
+    assc_pid = ff_cred_label_associate_by_pid(pid);
+
     IOLockLock(lock);
     if (proc_path[0]) {
         struct pid_info *p = (struct pid_info *)IOMalloc(sizeof(struct pid_info));
@@ -851,6 +853,8 @@ int com_zdziarski_driver_FlockFlock::ff_shared_exec_callback(pid_t pid, pid_t pp
         p->uid = uid;
         p->gid = gid;
         p->next = NULL;
+        if (assc_pid)
+            p->ppid = assc_pid;
         strncpy(p->path, proc_path, PATH_MAX-1);
         strncpy(p->name, proc_name, sizeof(p->name)-1);
         if (! pid_cache) {
@@ -1140,6 +1144,7 @@ pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid)
     pid_t ppid = 0;
     
     IOLog("ff_cred_label_associate_by_pid: lookup pid %d tid %llu\n", pid, tid);
+
     IOLockLock(lock);
     ptr = pid_map;
     while(ptr) {
@@ -1150,7 +1155,14 @@ pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid)
         ptr = ptr->next;
     }
     IOLockUnlock(lock);
-    return ppid;
+    if (ppid) {
+        int pppid = ff_cred_label_associate_by_pid(ppid);
+        IOLog("parent's of pid %d ppid %d, parent = %d\n", pid, ppid, pppid);
+        if (! pppid)
+            return ppid;
+        return ff_cred_label_associate_by_pid(ppid);
+    }
+    return 0;
 }
 
 int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
@@ -1197,15 +1209,18 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         query->path[PATH_MAX-1] = 0;
     
     assc_pid = ff_cred_label_associate_by_pid(pid);
-
-    IOLockLock(lock);
+    if (assc_pid)
+        ppid = assc_pid;
+    
     proc_selfname(proc_name, PATH_MAX);
     
     /* look for the process' path in the pid cache; this will include path mappings from posix_spawn
      * processes and the execve cache */
     
-    ptr = pid_cache;
+    IOLockLock(lock);
+
     proc_path[0] = 0;
+    ptr = pid_cache;
     while(ptr) {
         if (ptr->pid == pid && ptr->path[0]) {
             strncpy(proc_path, ptr->path, PATH_MAX-1);
@@ -1215,9 +1230,8 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         }
         ptr = ptr->next;
     }
-    
+
     /* also look for the process' parent path */
-    
     if (ppid) {
         ptr = pid_cache;
         while(ptr) {
