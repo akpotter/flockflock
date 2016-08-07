@@ -128,7 +128,7 @@ sudo -s
 rm -rf /Library/Extensions/FlockFlock.kext
 rm -rf /Library/Application\ Support/FlockFlock
 rm -f /Library/LaunchDaemons/com.zdziarski.FlockFlock.plist
-rm -f ~/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist
+rm -f /Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist
 rm -f ~/.flockflockrc
 reboot
 
