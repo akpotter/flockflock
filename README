@@ -243,4 +243,4 @@ CHANGELOG
 0.0.18  Added persistence hook for mpo_vnode_check_rename
         In addition to read access, added write access protection for
             all protected files; apps can work with files they've created,
-            but cannot modify protected files without user consentA
+            but cannot modify protected files without user consent

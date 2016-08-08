@@ -142,11 +142,6 @@ int _ff_vnode_check_write_internal(kauth_cred_t active_cred, kauth_cred_t file_c
     return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, active_cred, vp, label, NULL, FF_FILEOP_WRITE);
 }
 
-int _ff_check_vnode_rename_to_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, int samedir, struct componentname *cnp)
-{
-    return _ff_vnode_check_write_internal(cred, cred, vp, label);
-}
-
 int _ff_check_vnode_rename_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp,  struct label *label, struct componentname *cnp, struct vnode *tdvp, struct label *tdlabel, struct vnode *tvp, struct label *tlabel, struct componentname *tcnp)
 {
     return _ff_vnode_check_write_internal(cred, cred, vp, label);
@@ -273,7 +268,6 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_notify_create = _ff_vnode_notify_create_internal,
         .mpo_vnode_check_access = _ff_vnode_check_access_internal,
-        .mpo_vnode_check_rename_to = _ff_check_vnode_rename_to_internal,
         .mpo_vnode_check_rename = _ff_check_vnode_rename_internal,
 
         // .mpo_vnode_check_exec = _ff_vnode_check_exec_internal
