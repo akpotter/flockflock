@@ -326,7 +326,7 @@ kern_return_t com_zdziarski_driver_FlockFlock::addClientPolicy(FlockFlockClientP
     
     IOLog("IOKitTest::addClientPolicy\n");
 
-    if (memcmp(&skey_a, &clientRule->skey, SKEY_LEN) && memcmp(skey_d, &clientRule->skey, SKEY_LEN)) {
+    if (memcmp(skey_d, &clientRule->skey, SKEY_LEN)) {
         IOLog("FlockFlock::addClientPolicy: skey failure\n");
         return KERN_NO_ACCESS;
     }
@@ -437,15 +437,15 @@ bool com_zdziarski_driver_FlockFlock::receivePolicyResponse(struct policy_respon
     
     IOLockLock(lock);
     stop = shouldStop;
-    machNotificationPort = agentNotificationPort;
+    machNotificationPort = daemonNotificationPort;
     IOLockUnlock(lock);
     
-    while(queryLock == false && stop == false && agentNotificationPort != MACH_PORT_NULL) {
+    while(queryLock == false && stop == false && daemonNotificationPort != MACH_PORT_NULL) {
         IOSleep(100);
         
         IOLockLock(lock);
         stop = shouldStop;
-        machNotificationPort = agentNotificationPort;
+        machNotificationPort = daemonNotificationPort;
         IOLockUnlock(lock);
         
         queryLock = IOLockTryLock(context->reply_lock);
@@ -457,7 +457,7 @@ bool com_zdziarski_driver_FlockFlock::receivePolicyResponse(struct policy_respon
         return false;
     }
     
-    if (memcmp(&skey_a, &context->response.skey, SKEY_LEN)) {
+    if (memcmp(&skey_d, &context->response.skey, SKEY_LEN)) {
         IOLog("FlockFlock::receivePolicyResponse: skey failure\n");
         IOLockUnlock(context->reply_lock);
         IOLockUnlock(context->policy_lock);
@@ -485,7 +485,7 @@ int com_zdziarski_driver_FlockFlock::sendPolicyQuery(struct policy_query *query,
         IOLockLock(context->reply_lock);
     }
     
-    context->message.header.msgh_remote_port = agentNotificationPort;
+    context->message.header.msgh_remote_port = daemonNotificationPort;
     context->message.header.msgh_local_port = MACH_PORT_NULL;
     context->message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
     context->message.header.msgh_size = sizeof(context->message);
