@@ -43,8 +43,11 @@ protected:
     static IOReturn sStopFilter(OSObject *target, void *reference, IOExternalMethodArguments *args);
     static IOReturn sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args);
     static IOReturn sAuthenticate(OSObject *target, void *reference, IOExternalMethodArguments *args);
-    static IOReturn sSetPID(OSObject *target, void *reference, IOExternalMethodArguments *args);
-    static IOReturn sGenAgentTicket(OSObject *target, void *reference, IOExternalMethodArguments *args);
+    static IOReturn sSetAgentPID(OSObject *target, void *reference, IOExternalMethodArguments *args);
+    static IOReturn sGenTicket(OSObject *target, void *reference, IOExternalMethodArguments *args);
+    static IOReturn sSetDaemonPID(OSObject *target, void *reference, IOExternalMethodArguments *args);
+    static IOReturn sFilterStatus(OSObject *target, void *reference, IOExternalMethodArguments *args);
+
 };
 
 #endif /* FlockFlockClient_hpp */

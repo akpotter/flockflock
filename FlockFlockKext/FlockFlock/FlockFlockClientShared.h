@@ -24,8 +24,9 @@ enum FlockFlockRequestCode {
     kFlockFlockRequestStopFilter,
     kFlockFlockRequestPolicyResponse,
     kFlockFlockAssignAgentPID,
-    kFlockFlockGenAgentTicket,
-    
+    kFlockFlockAssignDaemonPID,
+    kFlockFlockGenTicket,
+    kFlockFlockFilterStatus,
     kFlockFlockRequestMethodCount
 };
 

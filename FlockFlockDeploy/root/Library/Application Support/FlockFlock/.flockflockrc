@@ -56,9 +56,6 @@ allow suffix "/login.keychain" "any"
 allow path "$HOME/.vimrc" "/usr/bin/vim"
 allow path "$HOME/.viminfo" "/usr/bin/vim"
 
-; background processes and other common things
-allow prefix "any" "Background Process 'mds' via /usr/libexec/xpcproxy"
-
 ; lots of things read bash history
 allow path "$HOME/.bash_history" "any"
 allow prefix "$HOME/.bash_sessions/" "any"

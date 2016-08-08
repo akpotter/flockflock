@@ -94,6 +94,7 @@ public:
     void ff_cred_label_associate_fork(kauth_cred_t cred, proc_t proc);
     
     static int ff_get_agent_pid_static(OSObject *provider);
+    static int ff_get_daemon_pid_static(OSObject *provider);
     static bool ff_should_persist(OSObject *provider);
 
     int ff_evaluate_vnode_check_oper(struct policy_query *);
@@ -104,10 +105,12 @@ public:
     bool stopFilter(unsigned char *key);
     void clearMachPort();
     void clearAllRules(unsigned char *key);
-    bool setMachPort(mach_port_t port);
+    bool setMachPort(mach_port_t port, bool is_daemon);
     bool setAgentPID(uint64_t pid, unsigned char *key);
-    bool genAgentTicket();
-
+    bool setDaemonPID(uint64_t pid, unsigned char *key);
+    bool genTicket(bool is_daemon);
+    bool isFilterActive(void);
+    
     kern_return_t addClientPolicy(FlockFlockClientPolicy policy);
 
 private:
@@ -125,16 +128,16 @@ private:
     void houseKeepMasterRuleTable();
     void houseKeepCreateCache();
     int sendStopNotice();
-    int genSecurityKey();
+    int genSecurityKey(bool is_daemon);
     
     int ff_shared_exec_callback(pid_t pid, pid_t ppid, uid_t uid, gid_t gid, uint64_t tid, const char *path);
     pid_t ff_cred_label_associate_by_pid(pid_t pid);
     bool ff_create_cache_lookup(pid_t pid, const char *path);
     
 public:
-    mach_port_t notificationPort;
+    mach_port_t agentNotificationPort, daemonNotificationPort;
     struct mach_query_context policyContext;
-    uint32_t userAgentPID;
+    uint32_t userAgentPID, daemonPID;
 
 private:
     bool filterActive, shouldStop, filterInitialized;
@@ -146,7 +149,8 @@ private:
     struct created_file *create_cache;
     struct created_file *create_last_insert;
     struct posix_spawn_map *pid_map, *map_last_insert;
-    unsigned char skey[SKEY_LEN];
+    unsigned char skey_a[SKEY_LEN];
+    unsigned char skey_d[SKEY_LEN];
     
     /* file access MAC policy */
     mac_policy_handle_t policyHandle;

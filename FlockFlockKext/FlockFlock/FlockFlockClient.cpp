@@ -19,8 +19,10 @@ com_zdziarski_driver_FlockFlockClient::sMethods[kFlockFlockRequestMethodCount] =
     { &com_zdziarski_driver_FlockFlockClient::sStartFilter, 0, 0, 0, 0 },
     { &com_zdziarski_driver_FlockFlockClient::sStopFilter, 0, SKEY_LEN, 0, 0 },
     { &com_zdziarski_driver_FlockFlockClient::sRespond, 0, sizeof(struct policy_response), 0, 0 },
-    { &com_zdziarski_driver_FlockFlockClient::sSetPID, 1, SKEY_LEN, 0, 0 },
-    { &com_zdziarski_driver_FlockFlockClient::sGenAgentTicket, 0, 0, 0, 0 }
+    { &com_zdziarski_driver_FlockFlockClient::sSetAgentPID, 1, SKEY_LEN, 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sSetDaemonPID, 1, SKEY_LEN, 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sGenTicket, 0, 0, 0, 0 },
+    { &com_zdziarski_driver_FlockFlockClient::sFilterStatus, 0, 0, 0, 0 }
 };
 
 IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void *reference, IOExternalMethodArguments *args)
@@ -38,11 +40,29 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sRespond(OSObject *target, void 
     return KERN_SUCCESS;
 }
 
-IOReturn com_zdziarski_driver_FlockFlockClient::sSetPID(OSObject *target, void *reference, IOExternalMethodArguments *args)
+IOReturn com_zdziarski_driver_FlockFlockClient::sFilterStatus(OSObject *target, void *reference, IOExternalMethodArguments *args)
+{
+    IOLog("FlockFlockClient::sFilterStatus\n");
+    com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
+    if (me->m_driver->isFilterActive() == true) {
+        return KERN_SUCCESS;
+    }
+    return KERN_FAILURE;
+}
+
+IOReturn com_zdziarski_driver_FlockFlockClient::sSetAgentPID(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
     IOLog("FlockFlockClient::sSetPID\n");
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
     me->m_driver->setAgentPID(args->scalarInput[0], (unsigned char *)args->structureInput);
+    return KERN_SUCCESS;
+}
+
+IOReturn com_zdziarski_driver_FlockFlockClient::sSetDaemonPID(OSObject *target, void *reference, IOExternalMethodArguments *args)
+{
+    IOLog("FlockFlockClient::sSetDaemonPID\n");
+    com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
+    me->m_driver->setDaemonPID(args->scalarInput[0], (unsigned char *)args->structureInput);
     return KERN_SUCCESS;
 }
 
@@ -74,10 +94,12 @@ IOReturn com_zdziarski_driver_FlockFlockClient::sAddClientPolicy(OSObject *targe
     return me->m_driver->addClientPolicy(clientPolicy);
 }
 
-IOReturn com_zdziarski_driver_FlockFlockClient::sGenAgentTicket(OSObject *target, void *reference, IOExternalMethodArguments *args)
+IOReturn com_zdziarski_driver_FlockFlockClient::sGenTicket(OSObject *target, void *reference, IOExternalMethodArguments *args)
 {
+    IOLog("FlockFlockClient::sGenTicket");
+    
     com_zdziarski_driver_FlockFlockClient *me = (com_zdziarski_driver_FlockFlockClient *)target;
-    bool success = me->m_driver->genAgentTicket();
+    bool success = me->m_driver->genTicket(me->m_taskIsAdmin);
     if (success == true)
         return KERN_SUCCESS;
     return KERN_FAILURE;
@@ -132,7 +154,6 @@ bool com_zdziarski_driver_FlockFlockClient::initWithTask(task_t owningTask, void
     if (ret == kIOReturnSuccess)
     {
         m_taskIsAdmin = true;
-        return false;
     }
     
     return true;
@@ -161,7 +182,7 @@ IOReturn com_zdziarski_driver_FlockFlockClient::clientClose(void)
 IOReturn com_zdziarski_driver_FlockFlockClient::registerNotificationPort(mach_port_t port, UInt32 type, io_user_reference_t refCon)
 {
     IOLog("FlockFlockClient::registerNotificationPort reference: %d\n", (int)refCon);
-    bool ret = m_driver->setMachPort(port);
+    bool ret = m_driver->setMachPort(port, m_taskIsAdmin);
     if (ret == true) {
         IOLog("FlockFlockClient::registerNotificationPort successful\n");
         return kIOReturnSuccess;

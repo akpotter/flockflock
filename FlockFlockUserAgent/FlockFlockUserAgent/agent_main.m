@@ -98,125 +98,6 @@ void displayAlert(const char *header, const char *message)
     CFUserNotificationReceiveResponse(notification, 0, NULL);
 }
 
-int getHome(char *buf, size_t len)
-{
-    struct passwd* pwd = getpwuid(getuid());
-    if (pwd) {
-        strncpy(buf, pwd->pw_dir, len-1);
-        LOG("home directory is %s", buf);
-        return 0;
-    }
-    
-    LOG("unable to determine home directory");
-    return errno;
-}
-
-int loadConfigurationFile(const char *config_path)
-{
-    struct _FlockFlockClientPolicy rule;
-    char homedir[PATH_MAX];
-    int success = 1;
-
-    LOG("size of policy structure is %d\n", sizeof(rule));
-    
-    if (getHome(homedir, PATH_MAX)) {
-        LOG("unable to load configuration file: homedir unknown");
-        return errno;
-    }
-    
-    LOG("opening configuration file %s", config_path);
-    FILE *file = fopen(config_path, "r");
-    char buf[2048];
-    if (!file) {
-        LOG("unable to open '%s' for reading: %s(%d)", config_path, strerror(errno), errno);
-        return errno;
-    }
-
-    LOG("reading configuration %s", config_path);
-    while((fgets(buf, sizeof(buf), file))!=NULL) {
-        if (buf[0] == '#' || buf[0] == ';')
-            continue;
-        if (buf[0] == 0 || buf[0] == '\r' || buf[0] == '\n')
-            continue;
-        
-        char *class = strtok(buf, "\t ");
-        char *type = strtok(NULL, "\t ");
-        char *path = strtok(NULL, "\"");
-        char *pname = strtok(NULL, "\"");
-        pname = strtok(NULL, "\"\n");
-        
-        LOG("parsing rule: class %s type %s path \"%s\" process name \"%s\"", class, type, path, pname);
-    
-        rule.ruleClass = get_class_by_name(class);
-        rule.ruleType = get_type_by_name(type);
-        if (!strcmp(path, "any")) {
-            rule.rulePath[0] = 0;
-        } else {
-            if (!strncmp(path, "$HOME/", 6)) {
-                char hpath[PATH_MAX];
-                snprintf(hpath, PATH_MAX, "%s/%s", homedir, path+6);
-                strncpy(rule.rulePath, hpath, PATH_MAX-1);
-            } else {
-                strncpy(rule.rulePath, path, PATH_MAX);
-            }
-        }
-        
-        if (!strcmp(pname, "any")) {
-            rule.processName[0] = 0;
-        } else {
-            strncpy(rule.processName, pname, PATH_MAX);
-        }
-        
-        rule.temporaryPid = 0;
-        rule.temporaryRule = 0;
-        
-        LOG("class: %d", get_class_by_name(class));
-        LOG("type : %d", get_type_by_name(type));
-        LOG("path : %s", rule.rulePath);
-        LOG("proc : %s (%d)", rule.processName, (int)strlen(rule.processName));
-        LOG("temp : %d", rule.temporaryRule);
-        
-        memcpy(&rule.skey, g_skey, SKEY_LEN);
-        kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
-        if (kr == KERN_SUCCESS) {
-            LOG("\tsuccess");
-        } else {
-            LOG("\tfailed");
-            success = 0;
-        }
-    }
-    if (! success) {
-        displayAlert("FlockFlock: Policy Programming Error", "An unexpected error occurred while trying to program policies into FlockFlock. Your files may not be protected. Please attempt a reboot to reinitialize FlockFlock.");
-    }
-    fclose(file);
-    return 0;
-}
-
-int sendConfiguration()
-{
-    char path[PATH_MAX];
-    char home[PATH_MAX];
-    
-    LOG("clearing old configuration");
-    kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestClearConfiguration, NULL, 0, g_skey, SKEY_LEN, NULL, NULL, NULL, NULL);
-    if (kr != KERN_SUCCESS) {
-        LOG("failed to clear old configuration, aborting");
-        return E_FAIL;
-    }
-    
-    if (! getHome(home, PATH_MAX)) {
-        snprintf(path, sizeof(path), "%s/.flockflockrc", home);
-    } else {
-        return errno;
-    }
-    
-    if (loadConfigurationFile(DEFAULT_FLOCKFLOCKRC))
-        return errno;
-    
-    loadConfigurationFile(path);
-    return 0;
-}
-
 int startFilter()
 {
     LOG("starting filter");
@@ -258,6 +139,17 @@ int getPPID(int pid)
     if (length == 0)
         return UINT_MAX;
     return info.kp_eproc.e_ppid;
+}
+
+void updateFilterStatus(void) {
+    kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockFilterStatus, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
+    if (kr == 0) {
+        [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusActive ];
+    }
+    else {
+        [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusDisabled ];
+        
+    }
 }
 
 int commitNewRuleToDisk(struct _FlockFlockClientPolicy *rule)
@@ -624,7 +516,6 @@ void *authenticateAndProgramModule(void *ptr) {
     unsigned char blank[SKEY_LEN];
     CFStringRef str;
     char pid[16];
-    int r;
     
     sleep(1);
     memset(&blank, 0, SKEY_LEN);
@@ -660,7 +551,7 @@ void *authenticateAndProgramModule(void *ptr) {
         pthread_exit(0);
         return NULL;
     } else {
-        [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusActive ];
+        updateFilterStatus();
     }
     
     LOG("setting agent pid to %d", getpid());
@@ -677,15 +568,6 @@ void *authenticateAndProgramModule(void *ptr) {
     IORegistryEntrySetCFProperty(g_driverConnection, CFSTR("pid"), str);
     CFRelease(str);
     
-    LOG("sending configuration");
-    r = sendConfiguration();
-    if (r) {
-        LOG("failed to send driver configuration");
-        displayAlert("Unable to configure FlockFlock", "FlockFlock was unable to be configured properly. Files are not presently protected. Please reboot to reinitialize FlockFlock.");
-    } else {
-        LOG("starting filter");
-        startFilter();
-    }
     pthread_exit(0);
     return NULL;
 }
@@ -735,7 +617,7 @@ int startDriverComms() {
             mach_port_t port = CFMachPortGetPort(notification_port);
             IOConnectSetNotificationPort(g_driverConnection, 0, port, 0);
             
-            IOConnectCallMethod(g_driverConnection, kFlockFlockGenAgentTicket, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
+            IOConnectCallMethod(g_driverConnection, kFlockFlockGenTicket, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
 
             pthread_t thread;
             pthread_create(&thread, NULL, authenticateAndProgramModule, NULL);

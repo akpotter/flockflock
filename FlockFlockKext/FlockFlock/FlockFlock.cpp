@@ -32,7 +32,8 @@ bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
     IOLog("FlockFlock::init\n");
 
     com_zdziarski_driver_FlockFlock_provider = this;
-    notificationPort   = MACH_PORT_NULL;
+    agentNotificationPort   = MACH_PORT_NULL;
+    daemonNotificationPort  = MACH_PORT_NULL;
     lastPolicyAdded    = NULL;
     policyRoot         = NULL;
     pid_cache           = NULL;
@@ -45,8 +46,10 @@ bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
     filterInitialized  = false;
     shouldStop         = false;
     userAgentPID       = 0;
+    daemonPID          = 0;
     lock               = IOLockAlloc();
-    bzero(skey, sizeof(skey));
+    bzero(skey_a, sizeof(skey_a));
+    bzero(skey_d, sizeof(skey_a));
     
     initQueryContext(&policyContext);
     setProperty("IOUserClientClass", "com_zdziarski_driver_FlockFlockClient");
@@ -166,7 +169,7 @@ bool com_zdziarski_driver_FlockFlock::stopPersistence()
  * as the agent cannot exit when a user logs out unless the driver is disabled
  * by the user. */
 
-bool com_zdziarski_driver_FlockFlock::genAgentTicket()
+bool com_zdziarski_driver_FlockFlock::genTicket(bool is_daemon)
 {
 #ifdef HARD_PERSISTENCE
     char proc_path[PATH_MAX];
@@ -177,7 +180,7 @@ bool com_zdziarski_driver_FlockFlock::genAgentTicket()
     
     IOLockLock(lock);
     
-    IOLog("FlockFlock::genAgentTicket\n");
+    IOLog("FlockFlock::genTicket\n");
     
 #ifdef HARD_PERSISTENCE
     /* pull out the proc path from cache */
@@ -192,7 +195,9 @@ bool com_zdziarski_driver_FlockFlock::genAgentTicket()
     }
     
     IOLog("FlockFlock::genAgentTicket: process path is '%s'\n", proc_path);
-    if (strncmp(proc_path, APP_PATH_FOLDER, PATH_MAX) && strncmp(proc_path, APP_BINARY, PATH_MAX)) {
+    if (strncmp(proc_path, APP_PATH_FOLDER, PATH_MAX) && strncmp(proc_path, APP_BINARY, PATH_MAX)
+        && strncmp(proc_path, SUPPORT_PATH, strlen(SUPPORT_PATH)))
+    {
         IOLog("FlockFlock::genAgentTicket: refusing to send ticket to pid %d running at unauthoried path %s\n", proc_selfpid(), proc_path);
         IOLockUnlock(lock);
         return false;
@@ -204,7 +209,7 @@ bool com_zdziarski_driver_FlockFlock::genAgentTicket()
      * and authenticate again (if persistence is turned on)
      */
     
-    r = genSecurityKey();
+    r = genSecurityKey(is_daemon);
     if (! r)
         success = true;
     
@@ -264,19 +269,18 @@ bool com_zdziarski_driver_FlockFlock::stopFilter(unsigned char *key)
 {
     bool success = false;
     
-    if (memcmp(&skey, key, SKEY_LEN)) {
+    if (memcmp(&skey_a, key, SKEY_LEN)) {
         IOLog("FlockFlock::stopFilter: skey failure\n");
         return false;
     }
     
     IOLockLock(lock);
     if (filterActive == true) {
-        IOLog("FlockFlock::stopFilter unloading policy");
+        IOLog("FlockFlock::stopFilter unloading policy\n");
         kern_return_t kr = _mac_policy_unregister_internal(policyHandle);
         if (kr == KERN_SUCCESS) {
             filterActive = false;
             success = true;
-            skey[0] = 0;
             IOLog("FlockFlock::stopFilter: filter stopped successfully\n");
         } else {
             IOLog("FlockFlock::stopFilter: an error occured while stopping the filter: %d\n", kr);
@@ -286,11 +290,16 @@ bool com_zdziarski_driver_FlockFlock::stopFilter(unsigned char *key)
     return success;
 }
 
+bool com_zdziarski_driver_FlockFlock::isFilterActive()
+{
+    return filterActive;
+}
+
 void com_zdziarski_driver_FlockFlock::clearAllRules(unsigned char *key)
 {
     IOLog("FlockFlock::clearAllRules\n");
 
-    if (memcmp(&skey, key, SKEY_LEN)) {
+    if (memcmp(&skey_d, key, SKEY_LEN)) {
         IOLog("FlockFlock::clearAllRules: skey failure\n");
         return;
     }
@@ -315,7 +324,7 @@ kern_return_t com_zdziarski_driver_FlockFlock::addClientPolicy(FlockFlockClientP
     
     IOLog("IOKitTest::addClientPolicy\n");
 
-    if (memcmp(&skey, &clientRule->skey, SKEY_LEN)) {
+    if (memcmp(&skey_a, &clientRule->skey, SKEY_LEN) && memcmp(skey_d, &clientRule->skey, SKEY_LEN)) {
         IOLog("FlockFlock::addClientPolicy: skey failure\n");
         return KERN_NO_ACCESS;
     }
@@ -341,28 +350,36 @@ kern_return_t com_zdziarski_driver_FlockFlock::addClientPolicy(FlockFlockClientP
     return KERN_SUCCESS;
 }
 
-bool com_zdziarski_driver_FlockFlock::setMachPort(mach_port_t port)
+bool com_zdziarski_driver_FlockFlock::setMachPort(mach_port_t port, bool is_daemon)
 {
     bool ret = false;
     IOLockLock(lock);
-    if (notificationPort == MACH_PORT_NULL) {
-        notificationPort = port;
-        ret = true;
+    if (is_daemon == false) {
+        if (agentNotificationPort == MACH_PORT_NULL) {
+            agentNotificationPort = port;
+            ret = true;
+        }
+    } else {
+        if (daemonNotificationPort == MACH_PORT_NULL) {
+            daemonNotificationPort = port;
+            ret = true;
+        }
     }
+    
     IOLockUnlock(lock);
     return ret;
 }
 
 void com_zdziarski_driver_FlockFlock::clearMachPort() {
     IOLockLock(lock);
-    notificationPort = MACH_PORT_NULL;
+    agentNotificationPort = MACH_PORT_NULL;
     IOLockUnlock(lock);
 }
 
 bool com_zdziarski_driver_FlockFlock::setAgentPID(uint64_t pid, unsigned char *key)
 {
     
-    if (memcmp(&skey, key, SKEY_LEN)) {
+    if (memcmp(&skey_a, key, SKEY_LEN)) {
         IOLog("FlockFlock::setAgentPID: skey failure\n");
         return false;
     }
@@ -373,6 +390,23 @@ bool com_zdziarski_driver_FlockFlock::setAgentPID(uint64_t pid, unsigned char *k
     
     IOLog("FlockFlock::setAgentPID set pid to %d\n", (int)pid);
 
+    return true;
+}
+
+bool com_zdziarski_driver_FlockFlock::setDaemonPID(uint64_t pid, unsigned char *key)
+{
+    
+    if (memcmp(&skey_d, key, SKEY_LEN)) {
+        IOLog("FlockFlock::setDaemonPID: skey failure\n");
+        return false;
+    }
+    
+    IOLockLock(lock);
+    daemonPID = (int)pid;
+    IOLockUnlock(lock);
+    
+    IOLog("FlockFlock::setDaemonPID set pid to %d\n", (int)pid);
+    
     return true;
 }
 
@@ -401,15 +435,15 @@ bool com_zdziarski_driver_FlockFlock::receivePolicyResponse(struct policy_respon
     
     IOLockLock(lock);
     stop = shouldStop;
-    machNotificationPort = notificationPort;
+    machNotificationPort = agentNotificationPort;
     IOLockUnlock(lock);
     
-    while(queryLock == false && stop == false && notificationPort != MACH_PORT_NULL) {
+    while(queryLock == false && stop == false && agentNotificationPort != MACH_PORT_NULL) {
         IOSleep(100);
         
         IOLockLock(lock);
         stop = shouldStop;
-        machNotificationPort = notificationPort;
+        machNotificationPort = agentNotificationPort;
         IOLockUnlock(lock);
         
         queryLock = IOLockTryLock(context->reply_lock);
@@ -421,7 +455,7 @@ bool com_zdziarski_driver_FlockFlock::receivePolicyResponse(struct policy_respon
         return false;
     }
     
-    if (memcmp(&skey, &context->response.skey, SKEY_LEN)) {
+    if (memcmp(&skey_a, &context->response.skey, SKEY_LEN)) {
         IOLog("FlockFlock::receivePolicyResponse: skey failure\n");
         IOLockUnlock(context->reply_lock);
         IOLockUnlock(context->policy_lock);
@@ -449,7 +483,7 @@ int com_zdziarski_driver_FlockFlock::sendPolicyQuery(struct policy_query *query,
         IOLockLock(context->reply_lock);
     }
     
-    context->message.header.msgh_remote_port = notificationPort;
+    context->message.header.msgh_remote_port = agentNotificationPort;
     context->message.header.msgh_local_port = MACH_PORT_NULL;
     context->message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
     context->message.header.msgh_size = sizeof(context->message);
@@ -474,11 +508,19 @@ int com_zdziarski_driver_FlockFlock::sendPolicyQuery(struct policy_query *query,
  * send it over via a mach message; the client will have to send this key
  * with any control queries to authenticate. */
 
-int com_zdziarski_driver_FlockFlock::genSecurityKey() {
+int com_zdziarski_driver_FlockFlock::genSecurityKey(bool is_daemon) {
     struct skey_msg message;
     int ret, i;
+    unsigned char skey[SKEY_LEN];
     
     IOLog("FlockFlock::genSecurityKey\n");
+    
+#ifdef PERSISTENCE
+    if (is_daemon == true && skey_d[0] != 0) {
+        IOLog("FlockFlock::genSecurityKey: error: key already exists\n");
+        return EACCES;
+    }
+#endif
     /* -DHARD_PERSISTENCE: Assuming a secure boot chain, will not allow the agent to reconnect if it
      * terminates, so that another process cannot masquerade as it. This is good defense against a
      * targeted attack specifically against FlockFlock, but also would require a reboot if the user
@@ -486,7 +528,7 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey() {
      * single-user security, such as for journalists and political dissidents.
      */
 #ifdef HARD_PERSISTENCE
-    if (skey[0] != 0) {
+    if (is_daemon == false && skey_a[0] != 0) {
         IOLog("FlockFlock::genSecurityKey: error: key already exists\n");
         return EACCES;
     }
@@ -497,7 +539,18 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey() {
     if (skey[i] == 0)
         skey[i] = 1; /* 0 = uninitialized */
     
-    message.header.msgh_remote_port = notificationPort;
+    if (is_daemon == true) {
+        bcopy(skey, skey_d, SKEY_LEN);
+    } else {
+        bcopy(skey, skey_a, SKEY_LEN);
+    }
+    
+    if (is_daemon == true) {
+        message.header.msgh_remote_port = daemonNotificationPort;
+
+    } else {
+        message.header.msgh_remote_port = agentNotificationPort;
+    }
     message.header.msgh_local_port = MACH_PORT_NULL;
     message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
     message.header.msgh_size = sizeof(message);
@@ -523,6 +576,11 @@ bool com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(OSObject *provi
 int com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(OSObject *provider) {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
     return me->userAgentPID;
+}
+
+int com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(OSObject *provider) {
+    com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
+    return me->daemonPID;
 }
 
 bool com_zdziarski_driver_FlockFlock::ff_should_persist(OSObject *provider) {
@@ -609,7 +667,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     int pid = proc_selfpid();
     int ppid = proc_selfppid();
     struct pid_info *ptr;
-    int agentPID;
+    int agentPID, daemonPID;
     pid_t assc_pid = 0;
     
     /* if we want granularity based on threads, we can use the thread id, but
@@ -639,8 +697,9 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     
     IOLockLock(lock);
     agentPID = userAgentPID;
+    daemonPID = daemonPID;
     IOLockUnlock(lock);
-    if (agentPID == pid) {  /* friendlies */
+    if (agentPID == pid || daemonPID == pid) {  /* friendlies */
         return 0;
     }
     
@@ -1339,7 +1398,7 @@ int com_zdziarski_driver_FlockFlock::sendStopNotice() {
     int ret;
     
     IOLog("FlockFlock::sendStopNotice\n");
-    message.header.msgh_remote_port = notificationPort;
+    message.header.msgh_remote_port = agentNotificationPort;
     message.header.msgh_local_port = MACH_PORT_NULL;
     message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
     message.header.msgh_size = sizeof(message);
@@ -1368,7 +1427,7 @@ void com_zdziarski_driver_FlockFlock::stop(IOService *provider)
     kauth_unlisten_scope(kauthListener);
     
     if (active == true) {
-        stopFilter(skey);
+        stopFilter(skey_a);
     }
 
     super::stop(provider);
@@ -1381,7 +1440,7 @@ void com_zdziarski_driver_FlockFlock::free(void)
 
     IOLog("IOKitTest::free\n");
 
-    clearAllRules(skey);
+    clearAllRules(skey_d);
     
     destroyQueryContext(&policyContext);
     
