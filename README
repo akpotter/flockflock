@@ -16,23 +16,24 @@ One of the worst parts about being compromised is not knowing you're
 compromised, and having your data stolen by spyware, or hijacked by
 ransomware, only to find out about it too late. Most security researchers 
 aren't even 100% positive that their system hasn't been compromised. 
-Between spyware, ransomware, misbehaving applications, government hacking, 
-and other threats, simply relying on file permissions and a secure 
-execution environment no longer cuts it. There's a much needed solution 
-for a tool that can keep your personal data protected from potentially 
-malicious software that has rooted your system, or to monitor applications 
-that you have to have installed, but don't necessarily trust.
+Between spyware, ransomware, trojanized or misbehaving applications,
+nation state hacking, and other threats, simply relying on file 
+permissions and a secure execution environment no longer cuts it. FlockFlock
+fills the need for a solution that can keep your personal data protected 
+from potentially malicious software that has rooted your system, or to 
+monitor applications that you have to have installed, but don't 
+necessarily trust.
 
 WHAT IS FLOCKFLOCK?
 
 In Simple Terms:
 
-FlockFlock is a utility to help protect your personal files in OS X,
+FlockFlock is a utility to help protect your personal files in macOS,
 to be able to tell if your system has been compromised, to ensure your
 applications are respecting your privacy, and to defend your personal data 
 against ransomware, spyware, infection, and other threats by preventing 
 unauthorized processes (even by super user processes) from being able to 
-open and read your files without your explicit permission.
+open, read, or destroy your personal files without your explicit permission.
 
 In short, FlockFlock is like the popular "Little Snitch" program, but for
 file access instead of network connections. It integrates with the
@@ -40,21 +41,23 @@ operating system on a low level, and has capabilities higher than root.
 
 For Developers:
 
-FlockFlock is a programmable OS X kernel extension that enforces file access
-policy using OS X's kernel-level MAC (mandatory access control) framework.
-The MAC framework began in TrustedBSD and was later adopted into the
-Darwin kernel; it allows FlockFlock to intercept every file open call on
+FlockFlock is a programmable macOS kernel extension that enforces file 
+access and modification policies using macOS's kernel-level MAC 
+(mandatory access control) framework.  The MAC framework began in 
+TrustedBSD and was later adopted into the Darwin kernel; it allows 
+FlockFlock to intercept every file open/write/delete/rename call on
 the system and analyze it against a set of rules programmed into the kernel
-at login time. Even if an attacker gets root on your system and kills off
-the helper daemon, the kernel module will continue to enforce the user's
-rules (and also attempt to defend FlockFlock from being unloaded or
-deleted).
+at boot time. Even if an attacker gets root on your system, the kernel
+module continues to enforce the user's rules, and even attempts to persist
+FlockFlock from being unloaded, deleted, or its helper daemon killed.
 
-FlockFlock comes in two pieces: the kernel extension, which contains a live
-copy of all active rules (so that a rooted device should not be able to
-disable it), and a user space client, which runs when the user logs in to
-program the kernel module, prompt the user for unauthorized file access
-attempts, and add new rules to the user's ~/.flockflockrc file.
+FlockFlock comes in three pieces: the kernel extension, which contains a 
+live copy of all active rules (so that a rooted device should not be able to
+disable it), a helper daemon that programs it at boot time and prompts the
+user for new access entitlements, and a user space client, which provides
+basic status via a status bar menu, and a way to disable FlockFlock from
+the GUI for upgrades. Per-user rules are stored, and can be edited (with
+the proper access entitlements) by the user.
 
 FlockFlock is also open source, because there is such a lack of good
 driver and kernel code for Mac. I think you'll find FlockFlock to be
@@ -76,15 +79,17 @@ NOTE: FlockFlock's locking is much more advanced than the flocks of olde,
 FEATURES
 
 - Real-time, kernel-level protection against unauthorized access to files
-- Defend against ransomware, spyware or other malicious programs that
-  might attempt to steal or encrypt your personal
+- Defend against ransomware, spyware, trojanized applications, or other 
+      malicious programs that might attempt to steal, encrypt, or destroy
+      your personal files
 - Monitor applications to ensure they aren’t misbehaving, and are
-  respecting your personal privacy by accessing your data files.
+  respecting your personal privacy in accessing your data files.
 - A user-friendly interface to add new rules and receive notifications of
   unauthorized access attempts.
 - Persistence; protects itself against root processes from unloading
-  the kernel extension or tampering with core files.
-      * This feature has been disabled in alpha versions
+  the kernel extension, tampering with core files, or manipulating the
+  user's rules.
+      * This feature has been disabled in alpha versions for testing
 
 INSTALLATION
 
@@ -124,13 +129,8 @@ since they are programmed directly into the kernel.
 
 REMOVAL 
 
-sudo -s
-rm -rf /Library/Extensions/FlockFlock.kext
-rm -rf /Library/Application\ Support/FlockFlock
-rm -f /Library/LaunchDaemons/com.zdziarski.FlockFlock.plist
-rm -f /Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist
-rm -f ~/.flockflockrc
-reboot
+Disable FlockFlock from the status bar, and then run the uninstall.sh 
+script provided, then reboot.
 
 PERSISTENCE 
 
