@@ -12,6 +12,11 @@
 #define DRIVER "com_zdziarski_driver_FlockFlock"
 #define SKEY_LEN 32
 
+#define FF_FILEOP_OPEN      0x00
+#define FF_FILEOP_DELETE    0x01
+#define FF_FILEOP_TRUNCATE  0x02
+#define FF_FILEOP_WRITE     0x03
+
 enum FlockFlockRequestCode {
     kFlockFlockRequestClearConfiguration,
     kFlockFlockRequestAddClientRule,
@@ -67,6 +72,7 @@ struct policy_query {
     char path[PATH_MAX];
     char process_name[PATH_MAX];
     uint32_t security_token;
+    int operation;
 };
 
 struct policy_response {

@@ -20,7 +20,6 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 #define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
 #define CONFIG "/.flockflockrc"
 
-
 static OSObject *com_zdziarski_driver_FlockFlock_provider;
 
 extern "C" {
@@ -28,10 +27,10 @@ extern "C" {
     int _mac_policy_unregister_internal(mac_policy_handle_t handlep);
 }
 
-/* primary MAC hook; this, we control */
+/* primary MAC hook */
 static int _ff_vnode_check_open_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
 {
-    return com_zdziarski_driver_FlockFlock::ff_vnode_check_open_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, acc_mode);
+    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, acc_mode, FF_FILEOP_OPEN);
 }
 
 /* hooked to map execution path */
@@ -65,9 +64,14 @@ int _ff_cred_label_update_execve_internal(kauth_cred_t old_cred, kauth_cred_t ne
  */
 int _ff_eval_vnode(struct vnode *vp)
 {
+#ifndef PERSISTENCE
+    return 0;
+#else
     char target_path[MAXPATHLEN];
     int target_len = MAXPATHLEN;
     int ret = 0;
+    
+
     
     if (!vp)
         return 0;
@@ -98,6 +102,7 @@ int _ff_eval_vnode(struct vnode *vp)
         IOLog("_ff_eval_vnode: denying operation target path %s\n", target_path);
     }
     return ret;
+#endif
 }
 
 int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int signum)
@@ -112,30 +117,73 @@ int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int si
     return 0;
 }
 
+int _ff_vnode_notify_create_internal(kauth_cred_t cred, struct mount *mp, struct label *mntlabel, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *vlabel, struct componentname *cnp)
+{
+    return com_zdziarski_driver_FlockFlock::ff_vnode_notify_create_static(com_zdziarski_driver_FlockFlock_provider, cred, mp, mntlabel, dvp, dlabel, vp, vlabel, cnp);
+}
+
 int _ff_vnode_check_unlink_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
 {
+    int eval;
     if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-    return _ff_eval_vnode(vp);
+    eval = _ff_eval_vnode(vp);
+    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
+        return eval;
+    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, NULL, FF_FILEOP_DELETE);
 }
 
 int _ff_vnode_check_write_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label)
 {
+    int eval;
     if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-    return _ff_eval_vnode(vp);
+    eval = _ff_eval_vnode(vp);
+    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
+        return eval;
+    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, active_cred, vp, label, NULL, FF_FILEOP_WRITE);
+}
+
+int _ff_check_vnode_rename_to_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, int samedir, struct componentname *cnp)
+{
+    return _ff_vnode_check_write_internal(cred, cred, vp, label);
+}
+
+int _ff_check_vnode_rename_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp,  struct label *label, struct componentname *cnp, struct vnode *tdvp, struct label *tdlabel, struct vnode *tvp, struct label *tlabel, struct componentname *tcnp)
+{
+    return _ff_vnode_check_write_internal(cred, cred, vp, label);
+}
+
+
+int _ff_check_exchangedata_internal(kauth_cred_t cred, struct vnode *v1, struct label *vl1, struct vnode *v2, struct label *vl2)
+{
+    return _ff_vnode_check_write_internal(cred, cred, v1, vl1);
+}
+
+
+int _ff_vnode_check_access_internal(
+                             kauth_cred_t cred,
+                             struct vnode *vp,
+                             struct label *label,
+                             int acc_mode
+                             )
+{
+    return _ff_vnode_check_write_internal(cred, cred, vp, label);
+
 }
 
 int _ff_vnode_check_rename_from_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
 {
     if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-
     return _ff_eval_vnode(vp);
 }
 
 int _ff_vnode_check_truncate_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label)
 {
+    int eval;
     if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-
-    return _ff_eval_vnode(vp);
+    eval = _ff_eval_vnode(vp);
+    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
+        return eval;
+    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, active_cred, vp, label, NULL, FF_FILEOP_TRUNCATE);
 }
 
 int _ff_vnode_check_setowner_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, uid_t uid, gid_t gid)
@@ -170,6 +218,8 @@ bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
     execve_cache       = NULL;
     pid_map            = NULL;
     map_last_insert    = NULL;
+    create_cache       = NULL;
+    create_last_insert = NULL;
     filterActive       = false;
     filterInitialized  = false;
     shouldStop         = false;
@@ -217,14 +267,21 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     persistenceHandle = { 0 };
     persistenceOps = {
         .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
+        .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
+        .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
+        .mpo_vnode_check_exchangedata = _ff_check_exchangedata_internal,
+        .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
+        .mpo_vnode_notify_create = _ff_vnode_notify_create_internal,
+        .mpo_vnode_check_access = _ff_vnode_check_access_internal,
+        .mpo_vnode_check_rename_to = _ff_check_vnode_rename_to_internal,
+        .mpo_vnode_check_rename = _ff_check_vnode_rename_internal,
+
         // .mpo_vnode_check_exec = _ff_vnode_check_exec_internal
 #ifdef PERSISTENCE
-        .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
         .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
         .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
-        .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
-        .mpo_vnode_check_write  = _ff_vnode_check_write_internal
+
 #ifdef HARD_PERSISTENCE
         , .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
 #endif
@@ -333,6 +390,8 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
         policyOps = {
             .mpo_cred_label_update_execve = _ff_cred_label_update_execve_internal,
             .mpo_vnode_check_open = _ff_vnode_check_open_internal,
+            .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
+            .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal
         };
         policyConf = {
             .mpc_name            = "FF File Monitor",
@@ -620,6 +679,11 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey() {
     return ret;
 }
 
+bool com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(OSObject *provider) {
+    com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
+    return me->filterActive;
+}
+
 int com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(OSObject *provider) {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
     return me->userAgentPID;
@@ -632,6 +696,39 @@ bool com_zdziarski_driver_FlockFlock::ff_should_persist(OSObject *provider) {
     
     return true;
 }
+
+int com_zdziarski_driver_FlockFlock::ff_vnode_notify_create_static(OSObject *provider, kauth_cred_t cred, struct mount *mp, struct label *mntlabel, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *vlabel, struct componentname *cnp)
+{
+    com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
+    return me->ff_vnode_notify_create(cred, mp, mntlabel, dvp, dlabel, vp, vlabel, cnp);
+}
+
+int com_zdziarski_driver_FlockFlock::ff_vnode_notify_create(kauth_cred_t cred, struct mount *mp, struct label *mntlabel, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *vlabel, struct componentname *cnp)
+{
+    char path[PATH_MAX] = { 0 };
+    int path_len = PATH_MAX;
+    
+    if (vn_getpath(vp, path, &path_len) == KERN_SUCCESS) {
+        struct created_file *file = (struct created_file *)IOMalloc(sizeof(struct created_file));
+
+        if (!file)
+            return 0;
+        bcopy(path, file->path, PATH_MAX);
+        file->pid = proc_selfpid();
+        file->next = NULL;
+        
+        IOLockLock(lock);
+        if (create_cache == NULL)
+            create_cache = file;
+        else
+            create_last_insert->next = file;
+        create_last_insert = file;
+        IOLockUnlock(lock);
+    }
+
+    return 0;
+}
+
 
 int com_zdziarski_driver_FlockFlock::ff_cred_label_update_execve_static(OSObject *provider, kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp)
 {
@@ -914,13 +1011,13 @@ void com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork(kauth_cred_t 
 }
 
 
-int com_zdziarski_driver_FlockFlock::ff_vnode_check_open_static(OSObject *provider, kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
+int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(OSObject *provider, kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode, int operation)
 {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
-    return me->ff_vnode_check_open(cred, vp, label, acc_mode);
+    return me->ff_vnode_check_oper(cred, vp, label, acc_mode, operation);
 }
 
-int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_query *query)
+int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_query *query)
 {
     bool blacklisted = false, whitelisted = false;
     int path_len = (int)strlen(query->path);
@@ -1012,7 +1109,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_open(struct policy_
     
     if (whitelisted == true)
     {
-        // IOLog("FlockFlock::ff_vnode_check_open: allow open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
+        IOLog("FlockFlock::ff_vnode_check_open: allow open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
 
         return 0;
     } else if (blacklisted == true) {
@@ -1034,6 +1131,7 @@ void com_zdziarski_driver_FlockFlock::houseKeeping(void)
     houseKeepPosixSpawnMap();
     houseKeepPathTable();
     houseKeepMasterRuleTable();
+    houseKeepCreateCache();
     IOLockUnlock(lock);
     
     IOLog("FlockFlock::houseKeeping finished\n");
@@ -1165,7 +1263,51 @@ pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid)
     return 0;
 }
 
-int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
+void com_zdziarski_driver_FlockFlock::houseKeepCreateCache(void)
+{
+    struct created_file *ptr, *old, *new_map = NULL, *last_insert = NULL;
+    
+    IOLog("FlockFlock::houseKeepCreateCache\n");
+    
+    ptr = create_cache;
+    while(ptr) {
+        proc_t proc = proc_find(ptr->pid);
+        if (proc) {
+            proc_rele(proc);
+            if (new_map == NULL)
+                new_map = ptr;
+            else
+                last_insert->next = ptr;
+            last_insert = ptr;
+            ptr = ptr->next;
+            last_insert->next = NULL;
+        } else {
+            old = ptr;
+            ptr = ptr->next;
+            IOFree(old, sizeof(struct created_file));
+        }
+    }
+    
+    create_cache = new_map;
+    create_last_insert = last_insert;
+}
+
+bool com_zdziarski_driver_FlockFlock::ff_create_cache_lookup(pid_t pid, const char *path)
+{
+    IOLockLock(lock);
+    struct created_file *ptr = create_cache;
+    while(ptr) {
+        if (ptr->pid == pid && !strncmp(ptr->path, path, PATH_MAX)) {
+            IOLockUnlock(lock);
+            return true;
+        }
+        ptr = ptr->next;
+    }
+    IOLockUnlock(lock);
+    return false;
+}
+
+int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode, int operation)
 {
     struct policy_query *query;
     struct policy_response response;
@@ -1192,6 +1334,18 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
     if (policyRoot == NULL)     /* no rules programmed yet, agent setup */
         return 0;
     
+    if (operation != FF_FILEOP_OPEN) {
+        char path[PATH_MAX];
+        bool exists;
+        
+        if (! vn_getpath(vp, path, &buflen))
+            path[PATH_MAX-1] = 0;
+        exists = ff_create_cache_lookup(pid, path);
+        IOLog("LOOKUP CHECK FOR OPERATION %d ON %s: %d exists: %d\n", operation, path, pid, exists);
+        if (exists == true)
+            return 0;
+    }
+    
     IOLockLock(lock);
     agentPID = userAgentPID;
     IOLockUnlock(lock);
@@ -1205,6 +1359,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
         return 0;
     query->pid = pid;
     query->path[0] = 0;
+    query->operation = operation;
     if (! vn_getpath(vp, query->path, &buflen))
         query->path[PATH_MAX-1] = 0;
     
@@ -1273,13 +1428,13 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_open(kauth_cred_t cred, stru
     /* the final process path becomes the basis for any new policy */
     strncpy(query->process_name, proc_path, PATH_MAX);
     
-    int ret = ff_evaluate_vnode_check_open(query);
+    int ret = ff_evaluate_vnode_check_oper(query);
     if (ret == EAUTH) {
         IOLockLock(policyContext.policy_lock);
         IOLockLock(policyContext.reply_lock);
 
         /* re-evaluate now that we have a query lock, in case the rule was just added */
-        int ret2 = ff_evaluate_vnode_check_open(query);
+        int ret2 = ff_evaluate_vnode_check_oper(query);
         if (ret2 != EAUTH) {
             IOLockUnlock(policyContext.policy_lock);
             IOLockUnlock(policyContext.reply_lock);

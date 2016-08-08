@@ -312,13 +312,29 @@ int promptUserForPermission(struct policy_query *query)
     char *path, *extension, *ptr, option[PATH_MAX];
     char *displayName, *appPath, *p;
     CFStringRef base = CFSTR("file:///Library/Application%20Support/FlockFlock/lock.png");
+    char operation[32];
     int i;
     
     strncpy(proc_path, query->process_name, PATH_MAX-1);
     proc_pidpath(query->pid, proc_detail, PATH_MAX);
     proc_pidpath(ppid, pproc_path, PATH_MAX);
     
-    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected an access attempt to the file:\n%s\n\nApplication:\n%s (%d)\n(%s)\n\nParent:\n%s (%d)\n",
+    switch(query->operation) {
+        case(FF_FILEOP_OPEN):
+            strncpy(operation, "an access", sizeof(operation));
+            break;
+        case(FF_FILEOP_WRITE):
+            strncpy(operation, "a write", sizeof(operation));
+            break;
+        case(FF_FILEOP_DELETE):
+            strncpy(operation, "a delete", sizeof(operation));
+            break;
+        case(FF_FILEOP_TRUNCATE):
+            strncpy(operation, "a truncate", sizeof(operation));
+            break;
+    }
+    
+    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected %s attempt to the file:\n%s\n\nApplication:\n%s (%d)\n(%s)\n\nParent:\n%s (%d)\n", operation,
              query->path, proc_path, query->pid, proc_detail, pproc_path, ppid);
     LOG("%s", alert_message);
     alert_str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(alert_message), kCFStringEncodingMacRoman, kCFAllocatorDefault);
@@ -467,8 +483,7 @@ int promptUserForPermission(struct policy_query *query)
     } else if ((responseFlags & 0x03) == kCFUserNotificationAlternateResponse) {
         rule.ruleClass = kFlockFlockPolicyClassBlacklistAllMatching;
     } else {
-        LOG("invalid response. denying access.");
-        return EACCES;
+        rule.ruleClass = kFlockFlockPolicyClassBlacklistAllMatching;
     }
     
     /* path selection */
@@ -524,11 +539,12 @@ int promptUserForPermission(struct policy_query *query)
     free(displayName);
     free(appPath);
     
-    /* "Until Restart" */
-    if (responseFlags & CFUserNotificationCheckBoxChecked(1)
-        || responseFlags & CFUserNotificationCheckBoxChecked(2)
-        || responseFlags & CFUserNotificationCheckBoxChecked(3))
+    /* "Until Quite", "Until Restart" */
+    if ((responseFlags & CFUserNotificationCheckBoxChecked(1))
+        || (responseFlags & CFUserNotificationCheckBoxChecked(2))
+        || (responseFlags & CFUserNotificationCheckBoxChecked(3)))
     {
+        LOG("adding rule to driver");
         memcpy(&rule.skey, g_skey, SKEY_LEN);
         int kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
         if (kr == 0) {
