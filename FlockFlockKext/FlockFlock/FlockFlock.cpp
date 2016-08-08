@@ -108,9 +108,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
         .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
         .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
         .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
-#ifdef HARD_PERSISTENCE
-        , .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
-#endif
+        .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
 #endif
     };
     
@@ -159,51 +157,24 @@ bool com_zdziarski_driver_FlockFlock::stopPersistence()
     return success;
 }
 
-/* generate a security ticket (skey) for the user agent to establish a trusted
+/* generate a security ticket (skey) for the daemon+agent to establish a trusted
  * relationship between user space and kernel space. this is established when
- * the agent first runs at login, and prevents another client from masquerading
- * as the agent to disable services. if the agent crashes, and the driver is
- * compiled with -DHARD_PERSISTENCE, the user will need to reboot in order to
- * reestablish this trusted connection, to prevent a malicious agent from
- * simply hijacking that connection. note: this makes multi-user problematic,
- * as the agent cannot exit when a user logs out unless the driver is disabled
- * by the user. */
+ * the daemon first runs at login, and prevents another daemon from masquerading
+ * as it to disable services. if the daemon crashes, and the driver is
+ * compiled with -DPERSISTENCE, the user will need to reboot in order to
+ * reestablish this trusted connection, to prevent a malicious daemon from
+ * simply hijacking that connection. */
 
 bool com_zdziarski_driver_FlockFlock::genTicket(bool is_daemon)
 {
-#ifdef HARD_PERSISTENCE
-    char proc_path[PATH_MAX];
-    pid_path *ptr;
-#endif
+
     bool success = false;
     int r;
     
     IOLockLock(lock);
     
     IOLog("FlockFlock::genTicket\n");
-    
-#ifdef HARD_PERSISTENCE
-    /* pull out the proc path from cache */
-    ptr = pid_cache;
-    proc_path[0] = 0;
-    while(ptr) {
-        if (ptr->pid == proc_selfpid()) {
-            strncpy(proc_path, ptr->path, PATH_MAX-1);
-            break;
-        }
-        ptr = ptr->next;
-    }
-    
-    IOLog("FlockFlock::genAgentTicket: process path is '%s'\n", proc_path);
-    if (strncmp(proc_path, APP_PATH_FOLDER, PATH_MAX) && strncmp(proc_path, APP_BINARY, PATH_MAX)
-        && strncmp(proc_path, SUPPORT_PATH, strlen(SUPPORT_PATH)))
-    {
-        IOLog("FlockFlock::genAgentTicket: refusing to send ticket to pid %d running at unauthoried path %s\n", proc_selfpid(), proc_path);
-        IOLockUnlock(lock);
-        return false;
-    }
-#endif
-    
+        
     /* generate a security key and send it to the user client. the driver will only do
      * this once and will need to be rebooted or unloaded in order for a client to connect
      * and authenticate again (if persistence is turned on)
@@ -517,24 +488,18 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey(bool is_daemon) {
     
     IOLog("FlockFlock::genSecurityKey\n");
     
+    /* -DPERSISTENCE: Assuming a secure boot chain, will not allow the daemon to reconnect if it
+     * terminates, so that another process cannot masquerade as it. This is good defense against a
+     * targeted attack specifically against FlockFlock, but also requires a reboot if the daemon
+     * crashes. */
+    
 #ifdef PERSISTENCE
     if (is_daemon == true && skey_d[0] != 0) {
         IOLog("FlockFlock::genSecurityKey: error: key already exists\n");
         return EACCES;
     }
 #endif
-    /* -DHARD_PERSISTENCE: Assuming a secure boot chain, will not allow the agent to reconnect if it
-     * terminates, so that another process cannot masquerade as it. This is good defense against a
-     * targeted attack specifically against FlockFlock, but also would require a reboot if the user
-     * logs out, or in the off chance the agent crashes. Good for implementations requiring hardened
-     * single-user security, such as for journalists and political dissidents.
-     */
-#ifdef HARD_PERSISTENCE
-    if (is_daemon == false && skey_a[0] != 0) {
-        IOLog("FlockFlock::genSecurityKey: error: key already exists\n");
-        return EACCES;
-    }
-#endif
+
     for(i = 0; i < SKEY_LEN; ++i) {
         skey[i] = (unsigned char)random() % 0xff;
     }
