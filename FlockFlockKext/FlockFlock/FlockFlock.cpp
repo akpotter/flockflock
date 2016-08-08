@@ -274,6 +274,8 @@ bool com_zdziarski_driver_FlockFlock::stopFilter(unsigned char *key)
         return false;
     }
     
+    sendStopNotice();
+    
     IOLockLock(lock);
     if (filterActive == true) {
         IOLog("FlockFlock::stopFilter unloading policy\n");
@@ -1398,7 +1400,7 @@ int com_zdziarski_driver_FlockFlock::sendStopNotice() {
     int ret;
     
     IOLog("FlockFlock::sendStopNotice\n");
-    message.header.msgh_remote_port = agentNotificationPort;
+    message.header.msgh_remote_port = daemonNotificationPort;
     message.header.msgh_local_port = MACH_PORT_NULL;
     message.header.msgh_bits = MACH_MSGH_BITS (MACH_MSG_TYPE_MAKE_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
     message.header.msgh_size = sizeof(message);

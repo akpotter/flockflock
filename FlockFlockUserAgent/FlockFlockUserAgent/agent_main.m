@@ -502,10 +502,6 @@ void notificationCallback(CFMachPortRef unusedport, void *voidmessage, CFIndex s
         memcpy(g_skey, message->skey, SKEY_LEN);
         pthread_mutex_unlock(&g_sharedLock);
         LOG("skey set");
-    } else if (header->query_type == FFQ_STOPPED) {
-        LOG("received filter stop notice from driver");
-        [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusDisabled ];
-        displayAlert("FlockFlock has been disabled!", "The FlockFlock driver has unexpectedly been disabled. Your files are no longer protected. Please reboot to reinitialize FlockFlock.");
     } else {
         LOG("unknown notification arrived... oh noes!");
     }

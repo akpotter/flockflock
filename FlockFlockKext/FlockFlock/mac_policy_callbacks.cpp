@@ -42,11 +42,15 @@ static int _ff_eval_vnode(struct vnode *vp)
             ret = EACCES;
         else if (!strncmp(target_path, SUPPORT_PATH, strlen(SUPPORT_PATH)))
             ret = EACCES;
+        else if (!strncmp(target_path, LIBRARY_PATH, strlen(LIBRARY_PATH)))
+            ret = EACCES;
         else if (!strncmp(target_path, APP_PATH, strlen(APP_PATH)))
             ret = EACCES;
         else if (!strncmp(target_path, LAUNCHD_AGENT, strlen(LAUNCHD_AGENT)))
             ret = EACCES;
         else if (!strncmp(target_path, LAUNCHD_DAEMON, strlen(LAUNCHD_DAEMON)))
+            ret = EACCES;
+        else if (!strncmp(target_path, LAUNCHD_KMOD, strlen(LAUNCHD_KMOD)))
             ret = EACCES;
         else if (!strncmp(target_path + (target_len - strlen(CONFIG)), CONFIG, strlen(CONFIG)))
             ret = EACCES;

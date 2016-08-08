@@ -15,7 +15,9 @@
 #define APP_PATH_FOLDER "/Applications/FlockFlockUserAgent.app/"
 #define APP_PATH "/Applications/FlockFlockUserAgent.app"
 #define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
-#define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
+#define LAUNCHD_KMOD "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
+#define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlockDaemon.plist"
+#define LIBRARY_PATH "/Library/FlockFlock"
 #define CONFIG "/.flockflockrc"
 
 int _ff_kauth_callback_internal(kauth_cred_t cred, void* idata, kauth_action_t action, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3);
