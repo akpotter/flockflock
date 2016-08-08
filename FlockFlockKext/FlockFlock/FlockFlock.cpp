@@ -7,6 +7,7 @@
 //
 
 #include "FlockFlock.hpp"
+#include "mac_policy_callbacks.h"
 
 #define super IOService
 OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
@@ -20,182 +21,16 @@ OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 #define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
 #define CONFIG "/.flockflockrc"
 
-static OSObject *com_zdziarski_driver_FlockFlock_provider;
+/* mac policy callouts have to be done in C land, so we store a singleton
+ * of our driver instance and call back into it later on when the policy 
+ * receives C-land callbacks */
+
+OSObject *com_zdziarski_driver_FlockFlock_provider;
 
 extern "C" {
     int _mac_policy_register_internal(struct mac_policy_conf *mpc, mac_policy_handle_t *handlep);
     int _mac_policy_unregister_internal(mac_policy_handle_t handlep);
 }
-
-/* primary MAC hook */
-static int _ff_vnode_check_open_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
-{
-    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, acc_mode, FF_FILEOP_OPEN);
-}
-
-/* hooked to map execution path */
-static int _ff_kauth_callback_internal(kauth_cred_t cred, void* idata, kauth_action_t action, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
-{
-    return com_zdziarski_driver_FlockFlock::ff_kauth_callback_static(com_zdziarski_driver_FlockFlock_provider, cred, idata, action, arg0, arg1, arg2, arg3);
-}
-
-/* hooked to map execution path (when kauth fails */
-int _ff_vnode_check_exec_internal(kauth_cred_t cred, struct vnode *vp, struct vnode *scriptvp, struct label *vnodelabel,struct label *scriptlabel, struct label *execlabel, struct componentname *cnp, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen)
-{
-    return com_zdziarski_driver_FlockFlock::ff_vnode_check_exec_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, scriptvp, vnodelabel, scriptlabel, execlabel, cnp, csflags, macpolicyattr, macpolicyattrlen);
-}
-
-/* hooked to map posix spawned processes back to ppid */
-void _ff_cred_label_associate_fork_internal(kauth_cred_t cred, proc_t proc)
-{
-    com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork_static(com_zdziarski_driver_FlockFlock_provider, cred, proc);
-}
-
-/* hooked to provide path to current pid after exec */
-int _ff_cred_label_update_execve_internal(kauth_cred_t old_cred, kauth_cred_t new_cred, struct proc *p, struct vnode *vp, off_t offset, struct vnode *scriptvp, struct label *vnodelabel, struct label *scriptvnodelabel, struct label *execlabel, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen,  int *disjointp)
-{
-        return com_zdziarski_driver_FlockFlock::ff_cred_label_update_execve_static(com_zdziarski_driver_FlockFlock_provider, old_cred, new_cred, p, vp, offset, scriptvp, vnodelabel, scriptvnodelabel, execlabel, csflags, macpolicyattr, macpolicyattrlen, disjointp);
-}
-
-/* persistence functions
- * these routines are here to prevent any process from tampering with core files needed by
- * flockflock; note that this also prevents upgrading or removal outside of recovery mode,
- * so this should probably be a feature specifically enabled by the user.
- */
-int _ff_eval_vnode(struct vnode *vp)
-{
-#ifndef PERSISTENCE
-    return 0;
-#else
-    char target_path[MAXPATHLEN];
-    int target_len = MAXPATHLEN;
-    int ret = 0;
-    
-
-    
-    if (!vp)
-        return 0;
-
-    if (false == com_zdziarski_driver_FlockFlock::ff_should_persist(com_zdziarski_driver_FlockFlock_provider))
-        return 0;
-    
-    if (! vn_getpath(vp, target_path, &target_len))
-    {
-        target_path[MAXPATHLEN-1] = 0;
-        target_len = (int)strlen(target_path);
-        
-        if (!strncmp(target_path, KMOD_PATH, strlen(KMOD_PATH)))
-            ret = EACCES;
-        else if (!strncmp(target_path, SUPPORT_PATH, strlen(SUPPORT_PATH)))
-            ret = EACCES;
-        else if (!strncmp(target_path, APP_PATH, strlen(APP_PATH)))
-            ret = EACCES;
-        else if (!strncmp(target_path, LAUNCHD_AGENT, strlen(LAUNCHD_AGENT)))
-            ret = EACCES;
-        else if (!strncmp(target_path, LAUNCHD_DAEMON, strlen(LAUNCHD_DAEMON)))
-            ret = EACCES;
-        else if (!strncmp(target_path + (target_len - strlen(CONFIG)), CONFIG, strlen(CONFIG)))
-            ret = EACCES;
-    }
-    
-    if (ret == EACCES) {
-        IOLog("_ff_eval_vnode: denying operation target path %s\n", target_path);
-    }
-    return ret;
-#endif
-}
-
-int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int signum)
-{
-    if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))
-    {
-        if (false == com_zdziarski_driver_FlockFlock::ff_should_persist(com_zdziarski_driver_FlockFlock_provider))
-            return 0;
-        IOLog("FlockFlock::_ff_vnode_check_signal_internal: attempt to kill agent pid %d by pid %d\n", proc_pid(proc), proc_selfpid());
-        return EACCES;
-    }
-    return 0;
-}
-
-int _ff_vnode_notify_create_internal(kauth_cred_t cred, struct mount *mp, struct label *mntlabel, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *vlabel, struct componentname *cnp)
-{
-    return com_zdziarski_driver_FlockFlock::ff_vnode_notify_create_static(com_zdziarski_driver_FlockFlock_provider, cred, mp, mntlabel, dvp, dlabel, vp, vlabel, cnp);
-}
-
-int _ff_vnode_check_unlink_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
-{
-    int eval;
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-    eval = _ff_eval_vnode(vp);
-    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
-        return eval;
-    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, NULL, FF_FILEOP_DELETE);
-}
-
-int _ff_vnode_check_write_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label)
-{
-    int eval;
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-    eval = _ff_eval_vnode(vp);
-    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
-        return eval;
-    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, active_cred, vp, label, NULL, FF_FILEOP_WRITE);
-}
-
-int _ff_check_vnode_rename_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp,  struct label *label, struct componentname *cnp, struct vnode *tdvp, struct label *tdlabel, struct vnode *tvp, struct label *tlabel, struct componentname *tcnp)
-{
-    return _ff_vnode_check_write_internal(cred, cred, vp, label);
-}
-
-
-int _ff_check_exchangedata_internal(kauth_cred_t cred, struct vnode *v1, struct label *vl1, struct vnode *v2, struct label *vl2)
-{
-    return _ff_vnode_check_write_internal(cred, cred, v1, vl1);
-}
-
-
-int _ff_vnode_check_access_internal(
-                             kauth_cred_t cred,
-                             struct vnode *vp,
-                             struct label *label,
-                             int acc_mode
-                             )
-{
-    return _ff_vnode_check_write_internal(cred, cred, vp, label);
-
-}
-
-int _ff_vnode_check_rename_from_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
-{
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-    return _ff_eval_vnode(vp);
-}
-
-int _ff_vnode_check_truncate_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label)
-{
-    int eval;
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-    eval = _ff_eval_vnode(vp);
-    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
-        return eval;
-    return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, active_cred, vp, label, NULL, FF_FILEOP_TRUNCATE);
-}
-
-int _ff_vnode_check_setowner_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, uid_t uid, gid_t gid)
-{
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-
-    return _ff_eval_vnode(vp);
-}
-
-int _ff_vnode_check_setmode_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, mode_t mode)
-{
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
-
-    return _ff_eval_vnode(vp);
-}
-
-/* FlockFlock driver begin */
 
 bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
 {
@@ -1011,6 +846,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(OSObject *provid
     return me->ff_vnode_check_oper(cred, vp, label, acc_mode, operation);
 }
 
+
 int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_query *query)
 {
     bool blacklisted = false, whitelisted = false;
@@ -1114,6 +950,158 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_
     IOLog("FlockFlock::ff_vnode_check_open: ask open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
 
     return EAUTH;
+}
+
+int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode, int operation)
+{
+    struct policy_query *query;
+    struct policy_response response;
+    char parent_path[PATH_MAX] = { 0 };
+    char proc_path[PATH_MAX] = { 0 };
+    char parent_name[32] = { 0 };
+    char proc_name[32] = { 0 };
+    int buflen = PATH_MAX;
+    int pid = proc_selfpid();
+    int ppid = proc_selfppid();
+    struct pid_info *ptr;
+    int agentPID;
+    pid_t assc_pid = 0;
+    
+    /* if we want granularity based on threads, we can use the thread id, but
+     * that also means more rules to prompt the user for, so instead we
+     * consolidate back to the main thread */
+    /* uint64_t tid = thread_tid(current_thread()); */
+    
+    if (vp == NULL)             /* something happened */
+        return 0;
+    if (vnode_isdir(vp))        /* we only work with files */
+        return 0;
+    if (policyRoot == NULL)     /* no rules programmed yet, agent setup */
+        return 0;
+    
+    /* check the create cache on delete or modify operations, to see if the pid created the file it's
+     * trying to change */
+    if (operation != FF_FILEOP_OPEN) {
+        char path[PATH_MAX];
+        bool exists;
+        
+        if (! vn_getpath(vp, path, &buflen))
+            path[PATH_MAX-1] = 0;
+        exists = ff_create_cache_lookup(pid, path);
+        if (exists == true)
+            return 0;
+    }
+    
+    IOLockLock(lock);
+    agentPID = userAgentPID;
+    IOLockUnlock(lock);
+    if (agentPID == pid) {  /* friendlies */
+        return 0;
+    }
+    
+    /* begin to build the policy query; this is what gets evaluated and (potentially) sent to the user client */
+    query = (struct policy_query *)IOMalloc(sizeof(struct policy_query));
+    if (!query)
+        return 0;
+    query->pid = pid;
+    query->path[0] = 0;
+    query->operation = operation;
+    if (! vn_getpath(vp, query->path, &buflen))
+        query->path[PATH_MAX-1] = 0;
+    
+    assc_pid = ff_cred_label_associate_by_pid(pid);
+    if (assc_pid)
+        ppid = assc_pid;
+    
+    proc_selfname(proc_name, PATH_MAX);
+    
+    /* look for the process' path in the pid cache; this will include path mappings from posix_spawn
+     * processes and the execve cache */
+    
+    IOLockLock(lock);
+    
+    proc_path[0] = 0;
+    ptr = pid_cache;
+    while(ptr) {
+        if (ptr->pid == pid && ptr->path[0]) {
+            strncpy(proc_path, ptr->path, PATH_MAX-1);
+            strncpy(proc_name, ptr->name, sizeof(proc_name)-1);
+            IOLog("ff_vnode_check_open: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
+            break;
+        }
+        ptr = ptr->next;
+    }
+    
+    /* also look for the process' parent path */
+    if (ppid) {
+        ptr = pid_cache;
+        while(ptr) {
+            if (ptr->pid == ppid) {
+                strncpy(parent_path, ptr->path, PATH_MAX-1);
+                strncpy(parent_name, ptr->name, sizeof(parent_name)-1);
+                break;
+            }
+            ptr = ptr->next;
+        }
+    }
+    
+    IOLockUnlock(lock);
+    
+    /* process hierarchy, consolidated by tracking posix_spawn here, we add "via <someprocess>" */
+    IOLog("pid %d assc_pid %d path %s parent %s\n", pid, assc_pid, proc_path, parent_path);
+    if (proc_path[0] && parent_path[0] && assc_pid) {
+        if (strncmp(proc_path, parent_path, PATH_MAX)) {
+            strncat(proc_path, " via ", PATH_MAX);
+            strncat(proc_path, parent_path, PATH_MAX);
+        }
+    } else if (proc_path[0] == 0 && parent_path[0]) {
+        snprintf(proc_path, PATH_MAX, "%s (-%s)", parent_path, proc_name);
+    }
+    
+    /* failsafe: if we can't find the path to the process in the lookup cache (perhaps it was running before
+     * the kernel module loaded), then reference it as a backgrounf process, but include the path
+     * to its parent so we have more than just a name */
+    
+    if (proc_path[0] == 0) {
+        if (parent_path[0]) {
+            snprintf(proc_path, sizeof(proc_path), ":%s via %s", proc_name, parent_path);
+        } else {
+            snprintf(proc_path, sizeof(proc_path), ":%s", proc_name);
+        }
+        
+    }
+    
+    /* the final process path becomes the basis for any new policy */
+    strncpy(query->process_name, proc_path, PATH_MAX);
+    
+    int ret = ff_evaluate_vnode_check_oper(query);
+    if (ret == EAUTH) {
+        IOLockLock(policyContext.policy_lock);
+        IOLockLock(policyContext.reply_lock);
+        
+        /* re-evaluate now that we have a query lock, in case the rule was just added */
+        int ret2 = ff_evaluate_vnode_check_oper(query);
+        if (ret2 != EAUTH) {
+            IOLockUnlock(policyContext.policy_lock);
+            IOLockUnlock(policyContext.reply_lock);
+            ret = ret2;
+        } else {
+            /* sent the query to the user agent, wait for response */
+            if (sendPolicyQuery(query, &policyContext, false) == 0) {
+                IOLog("FlockFlock::ff_node_check_option: sent policy query successfully, waiting for reply\n");
+                bool success = receivePolicyResponse(&response, &policyContext);
+                if (success) {
+                    ret = response.response;
+                }
+            } else {
+                IOLog("FlockFlock::ff_vnode_check_open: user agent is unavailable to prompt user, denying access\n");
+                ret = EACCES;
+            }
+        }
+    }
+    
+    IOFree(query, sizeof(struct policy_query));
+    return ret;
 }
 
 void com_zdziarski_driver_FlockFlock::houseKeeping(void)
@@ -1230,32 +1218,6 @@ void com_zdziarski_driver_FlockFlock::houseKeepMasterRuleTable(void)
     lastPolicyAdded = last_insert;
 }
 
-pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid) {
-    struct posix_spawn_map *ptr;
-    uint64_t tid = thread_tid(current_thread());
-    pid_t ppid = 0;
-    
-    IOLog("ff_cred_label_associate_by_pid: lookup pid %d tid %llu\n", pid, tid);
-
-    IOLockLock(lock);
-    ptr = pid_map;
-    while(ptr) {
-        if (ptr->pid == pid) {
-            ppid = ptr->ppid;
-            break;
-        }
-        ptr = ptr->next;
-    }
-    IOLockUnlock(lock);
-    if (ppid) {
-        int pppid = ff_cred_label_associate_by_pid(ppid);
-        IOLog("parent's of pid %d ppid %d, parent = %d\n", pid, ppid, pppid);
-        if (! pppid)
-            return ppid;
-        return ff_cred_label_associate_by_pid(ppid);
-    }
-    return 0;
-}
 
 void com_zdziarski_driver_FlockFlock::houseKeepCreateCache(void)
 {
@@ -1286,6 +1248,34 @@ void com_zdziarski_driver_FlockFlock::houseKeepCreateCache(void)
     create_last_insert = last_insert;
 }
 
+pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid) {
+    struct posix_spawn_map *ptr;
+    uint64_t tid = thread_tid(current_thread());
+    pid_t ppid = 0;
+    
+    IOLog("ff_cred_label_associate_by_pid: lookup pid %d tid %llu\n", pid, tid);
+
+    IOLockLock(lock);
+    ptr = pid_map;
+    while(ptr) {
+        if (ptr->pid == pid) {
+            ppid = ptr->ppid;
+            break;
+        }
+        ptr = ptr->next;
+    }
+    IOLockUnlock(lock);
+    if (ppid) {
+        int pppid = ff_cred_label_associate_by_pid(ppid);
+        IOLog("parent's of pid %d ppid %d, parent = %d\n", pid, ppid, pppid);
+        if (! pppid)
+            return ppid;
+        return ff_cred_label_associate_by_pid(ppid);
+    }
+    return 0;
+}
+
+
 bool com_zdziarski_driver_FlockFlock::ff_create_cache_lookup(pid_t pid, const char *path)
 {
     IOLockLock(lock);
@@ -1299,157 +1289,6 @@ bool com_zdziarski_driver_FlockFlock::ff_create_cache_lookup(pid_t pid, const ch
     }
     IOLockUnlock(lock);
     return false;
-}
-
-int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode, int operation)
-{
-    struct policy_query *query;
-    struct policy_response response;
-    char parent_path[PATH_MAX] = { 0 };
-    char proc_path[PATH_MAX] = { 0 };
-    char parent_name[32] = { 0 };
-    char proc_name[32] = { 0 };
-    int buflen = PATH_MAX;
-    int pid = proc_selfpid();
-    int ppid = proc_selfppid();
-    struct pid_info *ptr;
-    int agentPID;
-    pid_t assc_pid = 0;
-    
-    /* if we want granularity based on threads, we can use the thread id, but
-     * that also means more rules to prompt the user for, so instead we
-     * consolidate back to the main thread */
-    /* uint64_t tid = thread_tid(current_thread()); */
-    
-    if (vp == NULL)             /* something happened */
-        return 0;
-    if (vnode_isdir(vp))        /* we only work with files */
-        return 0;
-    if (policyRoot == NULL)     /* no rules programmed yet, agent setup */
-        return 0;
-    
-    if (operation != FF_FILEOP_OPEN) {
-        char path[PATH_MAX];
-        bool exists;
-        
-        if (! vn_getpath(vp, path, &buflen))
-            path[PATH_MAX-1] = 0;
-        exists = ff_create_cache_lookup(pid, path);
-        IOLog("LOOKUP CHECK FOR OPERATION %d ON %s: %d exists: %d\n", operation, path, pid, exists);
-        if (exists == true)
-            return 0;
-    }
-    
-    IOLockLock(lock);
-    agentPID = userAgentPID;
-    IOLockUnlock(lock);
-    if (agentPID == pid) {  /* friendlies */
-        return 0;
-    }
-    
-    /* begin to build the policy query; this is what gets evaluated and (potentially) sent to the user client */
-    query = (struct policy_query *)IOMalloc(sizeof(struct policy_query));
-    if (!query)
-        return 0;
-    query->pid = pid;
-    query->path[0] = 0;
-    query->operation = operation;
-    if (! vn_getpath(vp, query->path, &buflen))
-        query->path[PATH_MAX-1] = 0;
-    
-    assc_pid = ff_cred_label_associate_by_pid(pid);
-    if (assc_pid)
-        ppid = assc_pid;
-    
-    proc_selfname(proc_name, PATH_MAX);
-    
-    /* look for the process' path in the pid cache; this will include path mappings from posix_spawn
-     * processes and the execve cache */
-    
-    IOLockLock(lock);
-
-    proc_path[0] = 0;
-    ptr = pid_cache;
-    while(ptr) {
-        if (ptr->pid == pid && ptr->path[0]) {
-            strncpy(proc_path, ptr->path, PATH_MAX-1);
-            strncpy(proc_name, ptr->name, sizeof(proc_name)-1);
-            IOLog("ff_vnode_check_open: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
-            break;
-        }
-        ptr = ptr->next;
-    }
-
-    /* also look for the process' parent path */
-    if (ppid) {
-        ptr = pid_cache;
-        while(ptr) {
-            if (ptr->pid == ppid) {
-                strncpy(parent_path, ptr->path, PATH_MAX-1);
-                strncpy(parent_name, ptr->name, sizeof(parent_name)-1);
-                break;
-            }
-            ptr = ptr->next;
-        }
-    }
-    
-    IOLockUnlock(lock);
-    
-    /* process hierarchy, consolidated by tracking posix_spawn here, we add "via <someprocess>" */
-    IOLog("pid %d assc_pid %d path %s parent %s\n", pid, assc_pid, proc_path, parent_path);
-    if (proc_path[0] && parent_path[0] && assc_pid) {
-        if (strncmp(proc_path, parent_path, PATH_MAX)) {
-            strncat(proc_path, " via ", PATH_MAX);
-            strncat(proc_path, parent_path, PATH_MAX);
-        }
-    } else if (proc_path[0] == 0 && parent_path[0]) {
-        snprintf(proc_path, PATH_MAX, "%s (-%s)", parent_path, proc_name);
-    }
-    
-    /* failsafe: if we can't find the path to the process in the lookup cache (perhaps it was running before
-     * the kernel module loaded), then reference it as a backgrounf process, but include the path
-     * to its parent so we have more than just a name */
-    
-    if (proc_path[0] == 0) {
-        if (parent_path[0]) {
-            snprintf(proc_path, sizeof(proc_path), ":%s via %s", proc_name, parent_path);
-        } else {
-            snprintf(proc_path, sizeof(proc_path), ":%s", proc_name);
-        }
-        
-    }
-    
-    /* the final process path becomes the basis for any new policy */
-    strncpy(query->process_name, proc_path, PATH_MAX);
-    
-    int ret = ff_evaluate_vnode_check_oper(query);
-    if (ret == EAUTH) {
-        IOLockLock(policyContext.policy_lock);
-        IOLockLock(policyContext.reply_lock);
-
-        /* re-evaluate now that we have a query lock, in case the rule was just added */
-        int ret2 = ff_evaluate_vnode_check_oper(query);
-        if (ret2 != EAUTH) {
-            IOLockUnlock(policyContext.policy_lock);
-            IOLockUnlock(policyContext.reply_lock);
-            ret = ret2;
-        } else {
-            /* sent the query to the user agent, wait for response */
-            if (sendPolicyQuery(query, &policyContext, false) == 0) {
-                IOLog("FlockFlock::ff_node_check_option: sent policy query successfully, waiting for reply\n");
-                bool success = receivePolicyResponse(&response, &policyContext);
-                if (success) {
-                    ret = response.response;
-                }
-            } else {
-                IOLog("FlockFlock::ff_vnode_check_open: user agent is unavailable to prompt user, denying access\n");
-                ret = EACCES;
-            }
-        }
-    }
-    
-    IOFree(query, sizeof(struct policy_query));
-    return ret;
 }
 
 int com_zdziarski_driver_FlockFlock::sendStopNotice() {
