@@ -240,9 +240,11 @@ CHANGELOG
 0.0.15 	Various tweaks
 0.0.16  Completely reworked process tracking and it's awesome 
 0.0.17  Further improvements to process tracking
-0.0.18* Added persistence hook for mpo_vnode_check_rename
+0.0.18  Added persistence hook for mpo_vnode_check_rename
         In addition to read access, added write access protection for
             all protected files; apps can work with files they've created,
             but cannot modify protected files without user consent
 	Code cleanup and commenting
 	Removed significant logging overhead
+0.0.19* Added FlockFlockDaemon, moved load-time and policy code into it
+        Tweaks to persistence
