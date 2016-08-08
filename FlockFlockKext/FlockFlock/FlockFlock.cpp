@@ -95,6 +95,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
     
     persistenceHandle = { 0 };
     persistenceOps = {
+        .mpo_cred_label_update_execve = _ff_cred_label_update_execve_internal,
         .mpo_cred_label_associate_fork = _ff_cred_label_associate_fork_internal,
         .mpo_vnode_check_truncate = _ff_vnode_check_truncate_internal,
         .mpo_vnode_check_write  = _ff_vnode_check_write_internal,
@@ -167,14 +168,43 @@ bool com_zdziarski_driver_FlockFlock::stopPersistence()
 
 bool com_zdziarski_driver_FlockFlock::genTicket(bool is_daemon)
 {
-
+    char proc_path[PATH_MAX];
+    pid_info *ptr;
     bool success = false;
     int r;
     
     IOLockLock(lock);
     
     IOLog("FlockFlock::genTicket\n");
-        
+    
+    /* pull out the proc path from cache */
+    ptr = pid_cache;
+    proc_path[0] = 0;
+    while(ptr) {
+        if (ptr->pid == proc_selfpid()) {
+            strncpy(proc_path, ptr->path, PATH_MAX-1);
+            break;
+        }
+        ptr = ptr->next;
+    }
+    IOLog("FlockFlock::genTicket: client path is '%s'\n", proc_path);
+    
+    if (   strncmp(proc_path, DAEMON_PATH, PATH_MAX)
+        && strncmp(proc_path, APP_PATH_FOLDER, PATH_MAX)
+        && strncmp(proc_path, APP_BINARY, PATH_MAX))
+    {
+        IOLog("FlockFlock::genTicket: invalid path '%s' daemon mode: %d\n", proc_path, is_daemon);
+#ifdef PERSISTENCE
+        if (is_daemon) {
+            daemonNotificationPort = MACH_PORT_NULL;
+        } else {
+            agentNotificationPort = MACH_PORT_NULL;
+        }
+        IOLockUnlock(lock);
+        return false;
+#endif
+    }
+    
     /* generate a security key and send it to the user client. the driver will only do
      * this once and will need to be rebooted or unloaded in order for a client to connect
      * and authenticate again (if persistence is turned on)
@@ -193,7 +223,6 @@ bool com_zdziarski_driver_FlockFlock::genTicket(bool is_daemon)
  * on the system. we unload this when the agent is disabled to prevent 
  * unnecessary (although minimal) cpu utilization */
 
-
 bool com_zdziarski_driver_FlockFlock::startFilter()
 {
     bool success = false;
@@ -202,7 +231,6 @@ bool com_zdziarski_driver_FlockFlock::startFilter()
     if (filterActive == false) {
         policyHandle = { 0 };
         policyOps = {
-            .mpo_cred_label_update_execve = _ff_cred_label_update_execve_internal,
             .mpo_vnode_check_open = _ff_vnode_check_open_internal,
         };
         policyConf = {
@@ -922,40 +950,41 @@ int com_zdziarski_driver_FlockFlock::ff_cred_label_update_execve(kauth_cred_t ol
     
     proc_name(proc_pid(p), proc_nam, PATH_MAX);
     if (vn_getpath(vp, proc_path, &path_len) == KERN_SUCCESS) { /* add to execve cache */
-        IOLog("ff_cred_label_update_execve pid %d path %s name %s\n", pid, proc_path, proc_nam);
+        // IOLog("ff_cred_label_update_execve pid %d path %s name %s\n", pid, proc_path, proc_nam);
         
         if (proc_path[0]) {
             struct pid_info *p = (struct pid_info *)IOMalloc(sizeof(struct pid_info));
-            if (!p)
+            if (!p) {
+                IOLockUnlock(lock);
                 return 0;
-            if (p) {
-                p->pid = pid;
-                p->ppid = ppid;
-                p->uid = uid;
-                p->gid = gid;
-                p->next = NULL;
-                strncpy(p->path, proc_path, PATH_MAX-1);
-                strncpy(p->name, proc_nam, sizeof(p->name));
-                if (! execve_cache) {
-                    execve_cache = p;
-                } else {
-                    struct pid_info *ins = NULL, *ptr = execve_cache;
-                    while(ptr) {
-                        if (ptr->pid == pid) {
-                            ptr->ppid = ppid;
-                            ptr->uid = uid;
-                            ptr->gid = gid;
-                            strncpy(ptr->path, proc_path, PATH_MAX-1);
-                            strncpy(ptr->name, proc_nam, sizeof(ptr->name));
-                            ins = NULL;
-                            break;
-                        }
-                        ins = ptr;
-                        ptr = ptr->next;
+            }
+            
+            p->pid = pid;
+            p->ppid = ppid;
+            p->uid = uid;
+            p->gid = gid;
+            p->next = NULL;
+            strncpy(p->path, proc_path, PATH_MAX-1);
+            strncpy(p->name, proc_nam, sizeof(p->name));
+            if (! execve_cache) {
+                execve_cache = p;
+            } else {
+                struct pid_info *ins = NULL, *ptr = execve_cache;
+                while(ptr) {
+                    if (ptr->pid == pid) {
+                        ptr->ppid = ppid;
+                        ptr->uid = uid;
+                        ptr->gid = gid;
+                        strncpy(ptr->path, proc_path, PATH_MAX-1);
+                        strncpy(ptr->name, proc_nam, sizeof(ptr->name));
+                        ins = NULL;
+                        break;
                     }
-                    if (ins) {
-                        ins->next = p;
-                    }
+                    ins = ptr;
+                    ptr = ptr->next;
+                }
+                if (ins) {
+                    ins->next = p;
                 }
             }
         }

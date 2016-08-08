@@ -786,6 +786,8 @@ int startDriverComms() {
             kr = IOConnectCallMethod(g_driverConnection, kFlockFlockGenTicket, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
             if (kr != KERN_SUCCESS ){
                 LOG("ticket failed");
+                sleep(1);
+                exit(-1);
             }
             
             pthread_t thread;

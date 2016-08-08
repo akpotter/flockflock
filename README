@@ -246,5 +246,7 @@ CHANGELOG
             but cannot modify protected files without user consent
 	Code cleanup and commenting
 	Removed significant logging overhead
-0.0.19* Added FlockFlockDaemon, moved load-time and policy code into it
+0.0.19  Added FlockFlockDaemon, moved load-time and policy code into it
         Tweaks to persistence
+0.0.20* More improvements to persistence and stability
+	Fixed some locking issues in persistence mode
