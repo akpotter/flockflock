@@ -88,7 +88,6 @@
     CFUserNotificationRef notification;
     SInt32 err;
 
-    
     const void* keys[] = {
         kCFUserNotificationAlertHeaderKey,
         kCFUserNotificationAlertMessageKey,

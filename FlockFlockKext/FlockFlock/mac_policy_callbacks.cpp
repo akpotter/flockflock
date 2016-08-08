@@ -93,12 +93,11 @@ int _ff_cred_label_update_execve_internal(kauth_cred_t old_cred, kauth_cred_t ne
 
 int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int signum)
 {
-    if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_pid(proc) == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
         if (false == com_zdziarski_driver_FlockFlock::ff_should_persist(com_zdziarski_driver_FlockFlock_provider))
             return 0;
-        IOLog("FlockFlock::_ff_vnode_check_signal_internal: attempt to kill agent or daemon pid %d by pid %d\n", proc_pid(proc), proc_selfpid());
+        IOLog("FlockFlock::_ff_vnode_check_signal_internal: attempt to kill daemon pid %d by pid %d\n", proc_pid(proc), proc_selfpid());
         return EACCES;
     }
     return 0;
