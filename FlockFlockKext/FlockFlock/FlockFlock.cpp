@@ -671,7 +671,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
         if (ptr->pid == pid && ptr->path[0]) {
             strncpy(proc_path, ptr->path, PATH_MAX-1);
             strncpy(proc_name, ptr->name, sizeof(proc_name)-1);
-            IOLog("ff_vnode_check_open: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
+            // IOLog("ff_vnode_check_open: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
             break;
         }
         ptr = ptr->next;
@@ -693,7 +693,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     IOLockUnlock(lock);
     
     /* process hierarchy, consolidated by tracking posix_spawn here, we add "via <someprocess>" */
-    IOLog("pid %d assc_pid %d path %s parent %s\n", pid, assc_pid, proc_path, parent_path);
+    // IOLog("pid %d assc_pid %d path %s parent %s\n", pid, assc_pid, proc_path, parent_path);
     if (proc_path[0] && parent_path[0] && assc_pid) {
         if (strncmp(proc_path, parent_path, PATH_MAX)) {
             strncat(proc_path, " via ", PATH_MAX);
@@ -1153,10 +1153,9 @@ void com_zdziarski_driver_FlockFlock::ff_cred_label_associate_fork(kauth_cred_t 
 
 pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid) {
     struct posix_spawn_map *ptr;
-    uint64_t tid = thread_tid(current_thread());
     pid_t ppid = 0;
     
-    IOLog("ff_cred_label_associate_by_pid: lookup pid %d tid %llu\n", pid, tid);
+    // IOLog("ff_cred_label_associate_by_pid: lookup pid %d tid %llu\n", pid, tid);
     
     IOLockLock(lock);
     ptr = pid_map;
@@ -1170,7 +1169,7 @@ pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid)
     IOLockUnlock(lock);
     if (ppid) {
         int pppid = ff_cred_label_associate_by_pid(ppid);
-        IOLog("parent's of pid %d ppid %d, parent = %d\n", pid, ppid, pppid);
+        // IOLog("parent's of pid %d ppid %d, parent = %d\n", pid, ppid, pppid);
         if (! pppid)
             return ppid;
         return ff_cred_label_associate_by_pid(ppid);
@@ -1195,14 +1194,14 @@ void com_zdziarski_driver_FlockFlock::houseKeeping(void)
     houseKeepCreateCache();
     IOLockUnlock(lock);
     
-    IOLog("FlockFlock::houseKeeping finished\n");
+    // IOLog("FlockFlock::houseKeeping finished\n");
 }
 
 void com_zdziarski_driver_FlockFlock::houseKeepPosixSpawnMap(void)
 {
     struct posix_spawn_map *ptr, *old, *new_map = NULL, *last_insert = NULL;
     
-    IOLog("FlockFlock::houseKeepPosixSpawnMap\n");
+    // IOLog("FlockFlock::houseKeepPosixSpawnMap\n");
 
     /* posix spawn map */
     ptr = pid_map;
@@ -1231,7 +1230,7 @@ void com_zdziarski_driver_FlockFlock::houseKeepPathTable(void)
 {
     struct pid_info *ptr, *old, *new_map = NULL, *last_insert = NULL;
 
-    IOLog("FlockFlock::houseKeepPathTable\n");
+    // IOLog("FlockFlock::houseKeepPathTable\n");
 
     ptr = pid_cache;
     while(ptr) {
@@ -1260,7 +1259,7 @@ void com_zdziarski_driver_FlockFlock::houseKeepMasterRuleTable(void)
     FlockFlockPolicyHierarchy new_map = NULL;
     FlockFlockPolicy ptr, old, last_insert = NULL;
     
-    IOLog("FlockFlock::houseKeepMasterRuleTable\n");
+    // IOLog("FlockFlock::houseKeepMasterRuleTable\n");
 
     ptr = policyRoot;
     while(ptr) {
@@ -1286,7 +1285,7 @@ void com_zdziarski_driver_FlockFlock::houseKeepMasterRuleTable(void)
             ptr = ptr->next;
             last_insert->next = NULL;
         } else {
-            IOLog("FlockFlock::houseKeepMasterRuleTable: deleting temporary rule for pid %d\n", ptr->data.temporaryPid);
+            // IOLog("FlockFlock::houseKeepMasterRuleTable: deleting temporary rule for pid %d\n", ptr->data.temporaryPid);
             old = ptr;
             ptr = ptr->next;
             IOFree(old, sizeof(*old));
@@ -1301,7 +1300,7 @@ void com_zdziarski_driver_FlockFlock::houseKeepCreateCache(void)
 {
     struct created_file *ptr, *old, *new_map = NULL, *last_insert = NULL;
     
-    IOLog("FlockFlock::houseKeepCreateCache\n");
+    // IOLog("FlockFlock::houseKeepCreateCache\n");
     
     ptr = create_cache;
     while(ptr) {

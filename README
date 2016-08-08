@@ -244,3 +244,5 @@ CHANGELOG
         In addition to read access, added write access protection for
             all protected files; apps can work with files they've created,
             but cannot modify protected files without user consent
+	Code cleanup and commenting
+	Removed significant logging overhead
