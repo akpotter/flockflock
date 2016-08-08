@@ -21,7 +21,7 @@ enum FlockFlockStatusBarStatus {
 {
     NSStatusItem *statusItem;
     NSMenu *statusMenu;
-    NSMenuItem *statusMenuItem, *actionMenuItem;
+    NSMenuItem *statusMenuItem, *actionMenuItem, *aboutMenuItem;
     NSImage *statusImage;
     enum FlockFlockStatusBarStatus statusBarStatus;
 }
@@ -30,6 +30,8 @@ enum FlockFlockStatusBarStatus {
 - (void)updateStatus: (enum FlockFlockStatusBarStatus)status;
 - (void)disableAction:(id)sender;
 - (void)enableAction:(id)sender;
+- (void)aboutAction:(id)sender;
+- (void) displayNotice:(const char *)header message:(const char *)message;
 
 @property(assign) enum FlockFlockStatusBarStatus statusBarStatus;
 @end

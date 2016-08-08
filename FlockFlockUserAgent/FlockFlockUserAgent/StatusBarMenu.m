@@ -7,6 +7,7 @@
 //
 
 #import "StatusBarMenu.h"
+#include "../../FlockFlockKext/FlockFlock/FlockFlockClientShared.h"
 
 @implementation StatusBarMenu
 @synthesize statusBarStatus;
@@ -32,6 +33,11 @@
     
     actionMenuItem = [ statusMenu addItemWithTitle: @"Disable" action: NULL keyEquivalent: @"" ];
     actionMenuItem.target = nil;
+    
+    [ statusMenu addItem: [ NSMenuItem separatorItem ] ];
+    
+    aboutMenuItem = [ statusMenu addItemWithTitle: @"About FlockFlock" action: @selector(aboutAction:) keyEquivalent: @"" ];
+    aboutMenuItem.target = self;
     
     [ statusItem setImage: statusImage ];
     [ statusItem setAlternateImage: statusImage];
@@ -72,6 +78,42 @@
     [ statusItem setImage: statusImage ];
     [ statusItem setAlternateImage: statusImage];
     [ statusItem setHighlightMode:YES ];
+}
+
+- (void) displayNotice:(const char *)header message:(const char *)message
+{
+    CFStringRef base = CFSTR("file:///Library/Application%20Support/FlockFlock/lock.png");
+    CFURLRef icon = CFURLCreateWithString(NULL, base, NULL);
+    CFDictionaryRef parameters;
+    CFUserNotificationRef notification;
+    SInt32 err;
+
+    
+    const void* keys[] = {
+        kCFUserNotificationAlertHeaderKey,
+        kCFUserNotificationAlertMessageKey,
+        kCFUserNotificationDefaultButtonTitleKey,
+        kCFUserNotificationIconURLKey
+    };
+    
+    const void* values[] = {
+        CFStringCreateWithCString(NULL, header, kCFStringEncodingMacRoman),
+        CFStringCreateWithCString(NULL, message, kCFStringEncodingMacRoman),
+        CFSTR("OK"),
+        icon
+    };
+    
+    /* display the popup to the user and get a response */
+    parameters = CFDictionaryCreate(0, keys, values, sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    notification = CFUserNotificationCreate(kCFAllocatorDefault, 60, kCFUserNotificationPlainAlertLevel, &err, parameters);
+
+}
+
+- (void)aboutAction:(id)sender
+{
+    char version[32];
+    snprintf(version, sizeof(version), "FlockFlock %s", FLOCKFLOCK_VERSION);
+    [ self displayNotice: version message: "Copyright (c) 2016, by Jonathan Zdziarski\nAll Rights Reserved\n" ];
 }
 
 - (void)disableAction:(id)sender
