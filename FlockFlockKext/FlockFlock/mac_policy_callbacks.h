@@ -9,6 +9,15 @@
 #ifndef mac_policy_callbacks_h
 #define mac_policy_callbacks_h
 
+#define KMOD_PATH "/Library/Extensions/FlockFlock.kext"
+#define SUPPORT_PATH "/Library/Application Support/FlockFlock"
+#define APP_BINARY "/Applications/FlockFlockUserAgent.app/Contents/MacOS/FlockFlockUserAgent"
+#define APP_PATH_FOLDER "/Applications/FlockFlockUserAgent.app/"
+#define APP_PATH "/Applications/FlockFlockUserAgent.app"
+#define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
+#define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
+#define CONFIG "/.flockflockrc"
+
 int _ff_kauth_callback_internal(kauth_cred_t cred, void* idata, kauth_action_t action, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3);
 int _ff_vnode_check_exec_internal(kauth_cred_t cred, struct vnode *vp, struct vnode *scriptvp, struct label *vnodelabel,struct label *scriptlabel, struct label *execlabel, struct componentname *cnp, u_int *csflags, void *macpolicyattr, size_t macpolicyattrlen);
 void _ff_cred_label_associate_fork_internal(kauth_cred_t cred, proc_t proc);

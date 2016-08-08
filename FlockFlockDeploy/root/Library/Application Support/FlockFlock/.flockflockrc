@@ -70,3 +70,11 @@ allow path "$HOME/Library/Caches/com.apple.preferencepanes.cache" "/Applications
 allow prefix "$HOME/Library/Logs" "any"
 allow prefix "$HOME/Library/Preferences" "any"
 
+; vim
+allow suffix ".swpx" "/usr/bin/vim"
+allow suffix ".swp" "/usr/bin/vim"
+
+; .DS_Store files (ugh)
+allow suffix "/.DS_Store" "any"
+allow suffix "/.localized" "any"
+

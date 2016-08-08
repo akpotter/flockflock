@@ -12,16 +12,6 @@
 #define super IOService
 OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
-#define KMOD_PATH "/Library/Extensions/FlockFlock.kext"
-#define SUPPORT_PATH "/Library/Application Support/FlockFlock"
-#define APP_BINARY "/Applications/FlockFlockUserAgent.app/Contents/MacOS/FlockFlockUserAgent"
-#define APP_PATH_FOLDER "/Applications/FlockFlockUserAgent.app/"
-#define APP_PATH "/Applications/FlockFlockUserAgent.app"
-#define LAUNCHD_AGENT "/Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist"
-#define LAUNCHD_DAEMON "/Library/LaunchDaemons/com.zdziarski.FlockFlock.plist"
-#define CONFIG "/.flockflockrc"
-#define PERSISTENCE
-
 /* mac policy callouts have to be done in C land, so we store a singleton
  * of our driver instance and call back into it later on when the policy 
  * receives C-land callbacks */
@@ -108,7 +98,6 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
         .mpo_vnode_check_exchangedata = _ff_check_exchangedata_internal,
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_notify_create = _ff_vnode_notify_create_internal,
-        .mpo_vnode_check_access = _ff_vnode_check_access_internal,
         .mpo_vnode_check_rename = _ff_check_vnode_rename_internal,
 
         // .mpo_vnode_check_exec = _ff_vnode_check_exec_internal, /* replaced by kauth */
@@ -856,15 +845,15 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_
     
     if (whitelisted == true)
     {
-        IOLog("FlockFlock::ff_vnode_check_open: allow open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
+        // IOLog("FlockFlock::ff_vnode_check_oper: allow oper %d of %s by pid %d (%s) wht %d blk %d\n", query->operation, query->path, query->pid, query->process_name, whitelisted, blacklisted);
         
         return 0;
     } else if (blacklisted == true) {
-        IOLog("FlockFlock::ff_vnode_check_open: deny open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
+        IOLog("FlockFlock::ff_vnode_check_oper: deny oper %d of %s by pid %d (%s) wht %d blk %d\n", query->operation, query->path, query->pid, query->process_name, whitelisted, blacklisted);
         return EACCES;
     }
     
-    IOLog("FlockFlock::ff_vnode_check_open: ask open of %s by pid %d (%s) wht %d blk %d\n", query->path, query->pid, query->process_name, whitelisted, blacklisted);
+    IOLog("FlockFlock::ff_vnode_check_oper: ask oper %d of %s by pid %d (%s) wht %d blk %d\n", query->operation, query->path, query->pid, query->process_name, whitelisted, blacklisted);
     
     return EAUTH;
 }

@@ -139,12 +139,6 @@ int _ff_check_exchangedata_internal(kauth_cred_t cred, struct vnode *v1, struct 
     return _ff_vnode_check_write_internal(cred, cred, v1, vl1);
 }
 
-
-int _ff_vnode_check_access_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
-{
-    return _ff_vnode_check_write_internal(cred, cred, vp, label);
-}
-
 int _ff_vnode_check_rename_from_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
 {
     if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider))       return 0;
