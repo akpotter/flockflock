@@ -40,8 +40,6 @@ struct mach_query_context
     uint32_t security_token;
 };
 
-/* was going to use OSDictinoary but it's just an array too, so... */
-
 struct pid_info
 {
     uid_t uid;
@@ -74,7 +72,7 @@ public:
     virtual void stop(IOService *provider) override;
     virtual void free(void) override;
     
-    /* MAC policy methods and static hooks */
+    /* mac policy instance methods and their static entry hooks */
     
     static int ff_vnode_notify_create_static(OSObject *provider, kauth_cred_t cred, struct mount *mp, struct label *mntlabel, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *vlabel, struct componentname *cnp);
     int ff_vnode_notify_create(kauth_cred_t cred, struct mount *mp, struct label *mntlabel, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *vlabel, struct componentname *cnp);
@@ -101,6 +99,7 @@ public:
     int ff_evaluate_vnode_check_oper(struct policy_query *);
 
     /* IOUserClient methods */
+    
     bool startFilter();
     bool stopFilter(unsigned char *key);
     void clearMachPort();
@@ -158,9 +157,7 @@ private:
     mac_policy_handle_t persistenceHandle;
     struct mac_policy_ops persistenceOps;
     struct mac_policy_conf persistenceConf;
-    kauth_listener_t kauthListener = NULL;
-    
-    int proc_pidpathinfo(proc_t p, __unused uint64_t arg, user_addr_t buffer, uint32_t buffersize, __unused int32_t *retval);
+    kauth_listener_t kauthListener = NULL;    
 };
 
 #endif
