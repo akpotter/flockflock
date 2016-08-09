@@ -13,7 +13,7 @@
 #define super IOService
 OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
-// #define IOLog(...)
+#define IOLog(...)
 
 /* mac policy callouts have to be done in C land, so we store a singleton
  * of our driver instance and call back into it later on when the policy 

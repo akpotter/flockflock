@@ -58,6 +58,7 @@ LOG_ (const char *func, const char *err, ... )
 io_connect_t g_driverConnection;
 pthread_mutex_t g_sharedLock, g_promptLock;
 unsigned char g_skey[SKEY_LEN];
+int g_lastFilterState = -1;
 
 enum FlockFlockPolicyClass get_class_by_name(const char *name) {
     if (!strcmp(name, "allow"))
@@ -142,13 +143,24 @@ int getPPID(int pid)
 }
 
 void updateFilterStatus(void) {
+    pthread_mutex_lock(&g_sharedLock);
     kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockFilterStatus, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
+    pthread_mutex_unlock(&g_sharedLock);
+
     if (kr == 0) {
+        LOG("filter status active");
+        pthread_mutex_lock(&g_sharedLock);
+        g_lastFilterState = 1;
+        pthread_mutex_unlock(&g_sharedLock);
+
         [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusActive ];
     }
     else {
-        [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusDisabled ];
-        
+        pthread_mutex_lock(&g_sharedLock);
+        g_lastFilterState = 0;
+        pthread_mutex_unlock(&g_sharedLock);
+        LOG("filter status disabled");
+        [ [ StatusBarMenu sharedInstance ] updateStatus: kFlockFlockStatusBarStatusInactive ];
     }
 }
 
@@ -167,6 +179,21 @@ void notificationCallback(CFMachPortRef unusedport, void *voidmessage, CFIndex s
         LOG("skey set");
     } else {
         LOG("unknown notification arrived... oh noes!");
+    }
+}
+
+void *filterStatusManager(void *ptr) {
+    while(1) {
+        int last_state;
+        pthread_mutex_lock(&g_sharedLock);
+        last_state = g_lastFilterState;
+        pthread_mutex_unlock(&g_sharedLock);
+        
+        if (last_state == 1 || last_state == 0)
+            sleep(5);
+        else
+            sleep(1);
+        updateFilterStatus();
     }
 }
 
@@ -207,9 +234,9 @@ void *authenticateAndProgramModule(void *ptr) {
         notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
         CFUserNotificationReceiveResponse(notification, 0, NULL);
         LOG("reboot required");
-        pthread_exit(0);
         return NULL;
     } else {
+        LOG("updating filter status");
         updateFilterStatus();
     }
     
@@ -227,7 +254,12 @@ void *authenticateAndProgramModule(void *ptr) {
     IORegistryEntrySetCFProperty(g_driverConnection, CFSTR("pid"), str);
     CFRelease(str);
     
-    pthread_exit(0);
+    
+    pthread_t thread;
+    pthread_create(&thread, NULL, filterStatusManager, NULL);
+    pthread_detach(thread);
+                   
+    LOG("done setup");
     return NULL;
 }
 
