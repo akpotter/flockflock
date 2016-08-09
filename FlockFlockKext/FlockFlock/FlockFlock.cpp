@@ -124,6 +124,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
         .mpo_vnode_check_setmode = _ff_vnode_check_setmode_internal,
         .mpo_vnode_check_setowner = _ff_vnode_check_setowner_internal,
         .mpo_vnode_check_rename_from = _ff_vnode_check_rename_from_internal,
+        .mpo_vnode_check_rename_to = _ff_vnode_check_rename_to_internal,
         .mpo_proc_check_signal = _ff_vnode_check_signal_internal,
 #endif
     };

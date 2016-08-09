@@ -34,6 +34,7 @@ int _ff_check_vnode_rename_internal(kauth_cred_t cred,struct vnode *dvp, struct 
 int _ff_check_exchangedata_internal(kauth_cred_t cred, struct vnode *v1, struct label *vl1, struct vnode *v2, struct label *vl2);
 int _ff_vnode_check_access_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode);
 int _ff_vnode_check_rename_from_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp);
+int _ff_vnode_check_rename_to_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, int samedir, struct componentname *cnp);
 int _ff_vnode_check_truncate_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label);
 int _ff_vnode_check_setowner_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, uid_t uid, gid_t gid);
 int _ff_vnode_check_setmode_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, mode_t mode);

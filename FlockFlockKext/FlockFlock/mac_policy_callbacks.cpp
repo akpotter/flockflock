@@ -26,11 +26,8 @@ static int _ff_eval_vnode(struct vnode *vp)
     int target_len = MAXPATHLEN;
     int ret = 0;
     
-    
-    
     if (!vp)
         return 0;
-    
     if (false == com_zdziarski_driver_FlockFlock::ff_should_persist(com_zdziarski_driver_FlockFlock_provider))
         return 0;
     
@@ -117,8 +114,7 @@ int _ff_vnode_notify_create_internal(kauth_cred_t cred, struct mount *mp, struct
 int _ff_vnode_check_unlink_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
 {
     int eval;
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
       return 0;
     }
@@ -131,8 +127,7 @@ int _ff_vnode_check_unlink_internal(kauth_cred_t cred,struct vnode *dvp, struct 
 int _ff_vnode_check_write_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label)
 {
     int eval;
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
         return 0;
     }
@@ -144,6 +139,14 @@ int _ff_vnode_check_write_internal(kauth_cred_t active_cred, kauth_cred_t file_c
 
 int _ff_check_vnode_rename_internal(kauth_cred_t cred,struct vnode *dvp, struct label *dlabel, struct vnode *vp,  struct label *label, struct componentname *cnp, struct vnode *tdvp, struct label *tdlabel, struct vnode *tvp, struct label *tlabel, struct componentname *tcnp)
 {
+    int eval;
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    {
+        return 0;
+    }
+    eval = _ff_eval_vnode(vp);
+    if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
+        return eval;
     return _ff_vnode_check_write_internal(cred, cred, vp, label);
 }
 
@@ -154,8 +157,16 @@ int _ff_check_exchangedata_internal(kauth_cred_t cred, struct vnode *v1, struct 
 
 int _ff_vnode_check_rename_from_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, struct componentname *cnp)
 {
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    {
+        return 0;
+    }
+    return _ff_eval_vnode(vp);
+}
+
+int _ff_vnode_check_rename_to_internal(kauth_cred_t cred, struct vnode *dvp, struct label *dlabel, struct vnode *vp, struct label *label, int samedir, struct componentname *cnp)
+{
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
         return 0;
     }
@@ -165,8 +176,7 @@ int _ff_vnode_check_rename_from_internal(kauth_cred_t cred, struct vnode *dvp, s
 int _ff_vnode_check_truncate_internal(kauth_cred_t active_cred, kauth_cred_t file_cred, struct vnode *vp, struct label *label)
 {
     int eval;
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
         return 0;
     }
@@ -178,8 +188,7 @@ int _ff_vnode_check_truncate_internal(kauth_cred_t active_cred, kauth_cred_t fil
 
 int _ff_vnode_check_setowner_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, uid_t uid, gid_t gid)
 {
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
         return 0;
     }
@@ -189,8 +198,7 @@ int _ff_vnode_check_setowner_internal(kauth_cred_t cred, struct vnode *vp, struc
 
 int _ff_vnode_check_setmode_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, mode_t mode)
 {
-    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(com_zdziarski_driver_FlockFlock_provider)
-        || proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+    if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
     {
         return 0;
     }
