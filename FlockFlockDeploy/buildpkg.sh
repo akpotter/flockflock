@@ -9,7 +9,7 @@ then
 fi
 IDENTITY="Jonathan Zdziarski"
 
-rm -rf ~/Library/Developer/Xcode/DerivedData/
+# rm -rf ~/Library/Developer/Xcode/DerivedData/
 
 pkgbuild --root `pwd`/root --identifier com.zdziarski.FlockFlock --identifier com.zdziarski.FlockFlockUserAgent --identifier com.zdziarski.FlockFlockDaemon --version $BUILD --ownership recommended --install-location / --sign "$IDENTITY" FlockFlock.pkg
 

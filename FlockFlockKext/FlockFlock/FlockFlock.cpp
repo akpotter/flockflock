@@ -13,6 +13,8 @@
 #define super IOService
 OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
+#define IOLog(...)
+
 /* mac policy callouts have to be done in C land, so we store a singleton
  * of our driver instance and call back into it later on when the policy 
  * receives C-land callbacks */
@@ -738,7 +740,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
         if (ptr->pid == pid && ptr->path[0]) {
             strncpy(proc_path, ptr->path, PATH_MAX-1);
             strncpy(proc_name, ptr->name, sizeof(proc_name)-1);
-            IOLog("ff_vnode_check_oper: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
+            // IOLog("ff_vnode_check_oper: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
             break;
         }
         ptr = ptr->next;
@@ -751,6 +753,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
             if (ptr->pid == ppid) {
                 strncpy(parent_path, ptr->path, PATH_MAX-1);
                 strncpy(parent_name, ptr->name, sizeof(parent_name)-1);
+                // IOLog("ff_vnode_check_oper: ppid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
                 break;
             }
             ptr = ptr->next;
@@ -780,6 +783,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
      * to its parent so we have more than just a name */
     
     if (proc_path[0] == 0) {
+        // IOLog("pid %d assc_pid %d ppid %d no path\n", pid, assc_pid, ppid);
         if (parent_path[0]) {
             snprintf(proc_path, sizeof(proc_path), ":%s via %s", proc_name, parent_path);
         } else {
@@ -1244,8 +1248,18 @@ pid_t com_zdziarski_driver_FlockFlock::ff_cred_label_associate_by_pid(pid_t pid)
     if (ppid) {
         int pppid = ff_cred_label_associate_by_pid(ppid);
         // IOLog("parent's of pid %d ppid %d, parent = %d\n", pid, ppid, pppid);
-        if (! pppid)
+        if (! pppid) {
             return ppid;
+        } else {
+            struct pid_info *p = pid_cache;
+            while(p) {
+                if (p->pid == ppid && p->path[0]) {
+                    return ppid;
+                }
+                p = p->next;
+            }
+        }
+        
         return ff_cred_label_associate_by_pid(ppid);
     }
     return 0;

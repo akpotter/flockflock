@@ -251,5 +251,6 @@ CHANGELOG
         Tweaks to persistence
 0.0.20  More improvements to persistence and stability
 	Fixed some locking issues in persistence mode
-0.0.21* Put kauth loop into a separate thread to get path before check_oper
-	    result: better identification of forked processes
+0.0.21  Put kauth loop into a separate thread to get path before check_oper
+0.0.22* Improved spawn tracking, trimmed display name of .app packages 
+	Turned off heavy debug logging for performance

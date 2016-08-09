@@ -417,6 +417,24 @@ int promptUserForPermission(struct policy_query *query)
     if (p)
         p[0] = 0;
     
+    /* trim .app folders down to just application name for display */
+    if (!strncmp(displayName + (strlen(displayName)-4), ".app", 4)) {
+        char path[PATH_MAX];
+        char *q = displayName;
+        p = strchr(displayName, '/');
+        while(p && p[1]) {
+            q = p+1;
+            p = strchr(q, '/');
+        }
+        p = strstr(q, ".app");
+        if (p)
+            p[0] = 0;
+        LOG("trimmed pathname to %s", q);
+        strncpy(path, q, PATH_MAX);
+        free(displayName);
+        displayName = strdup(path);
+    }
+    
     LOG("finding application icon for %s", appPath);
     NSImage *image = [ [ NSWorkspace sharedWorkspace ] iconForFile: [ NSString stringWithUTF8String: appPath ] ];
     [ image setSize: CGSizeMake(256.0, 256.0) ];
@@ -620,6 +638,7 @@ void *handlePolicyQuery(void *ptr)
     
     LOG("received policy query for pid %d target %s", message->query.pid, message->query.path);
     pthread_mutex_lock(&g_promptLock);
+    
     memset(&response, 0, sizeof(struct policy_response));
     response.security_token = message->query.security_token;
     response.pid = message->query.pid;
