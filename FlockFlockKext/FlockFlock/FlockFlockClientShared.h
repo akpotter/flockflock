@@ -9,8 +9,8 @@
 #ifndef FlockFlockClientShared_h
 #define FlockFlockClientShared_h
 
-// #define PERSISTENCE
-#define FLOCKFLOCK_VERSION  "alpha_0.0.23_persistence"
+#define PERSISTENCE
+#define FLOCKFLOCK_VERSION  "alpha_0.0.24_persistence"
 
 #define DRIVER "com_zdziarski_driver_FlockFlock"
 #define SKEY_LEN 32

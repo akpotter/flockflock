@@ -287,5 +287,5 @@ CHANGELOG
 0.0.21  Put kauth loop into a separate thread to get path before check_oper
 0.0.22  Improved spawn tracking, trimmed display name of .app packages 
 	Turned off heavy debug logging for performance
-0.0.23* Fixed issues with freezing due to not recognizing daemon as friendly
-0.0.24  Added missing persistence hook mpo_vnode_check_rename_to 
+0.0.23  Fixed issues with freezing due to not recognizing daemon as friendly
+0.0.24* Added missing persistence hook mpo_vnode_check_rename_to 
