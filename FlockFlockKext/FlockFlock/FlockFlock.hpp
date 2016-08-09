@@ -138,6 +138,7 @@ public:
     mach_port_t agentNotificationPort, daemonNotificationPort;
     struct mach_query_context policyContext;
     uint32_t userAgentPID, daemonPID;
+    kauth_listener_t kauthListener = NULL;
 
 private:
     bool filterActive, shouldStop, filterInitialized;
@@ -161,7 +162,8 @@ private:
     mac_policy_handle_t persistenceHandle;
     struct mac_policy_ops persistenceOps;
     struct mac_policy_conf persistenceConf;
-    kauth_listener_t kauthListener = NULL;    
+    thread_t kauth_thread;
+
 };
 
 #endif

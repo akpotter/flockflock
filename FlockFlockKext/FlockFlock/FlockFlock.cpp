@@ -6,6 +6,7 @@
 //  Copyright © 2016 Jonathan Zdziarski. All rights reserved.
 //
 
+#include <mach/task.h>
 #include "FlockFlock.hpp"
 #include "mac_policy_callbacks.h"
 
@@ -21,6 +22,13 @@ OSObject *com_zdziarski_driver_FlockFlock_provider;
 extern "C" {
     int _mac_policy_register_internal(struct mac_policy_conf *mpc, mac_policy_handle_t *handlep);
     int _mac_policy_unregister_internal(mac_policy_handle_t handlep);
+}
+
+void _kauth_listen_scope_internal(void *ptr, wait_result_t w)
+{
+    IOLog("_kauth_listen_scope_internal");
+    com_zdziarski_driver_FlockFlock *provider = (com_zdziarski_driver_FlockFlock *)ptr;
+    provider->kauthListener = kauth_listen_scope(KAUTH_SCOPE_FILEOP, &_ff_kauth_callback_internal, NULL);
 }
 
 bool com_zdziarski_driver_FlockFlock::init(OSDictionary *dict)
@@ -78,8 +86,13 @@ bool com_zdziarski_driver_FlockFlock::start(IOService *provider)
     super::registerService();
     IOLog("FlockFlock::start successful\n");
     
+
+    kern_return_t result;
+    result = kernel_thread_start(_kauth_listen_scope_internal, this, &kauth_thread);
+    
+    // kauthListener = kauth_listen_scope(KAUTH_SCOPE_FILEOP, &_ff_kauth_callback_internal, NULL);
+    
     startPersistence();
-    kauthListener = kauth_listen_scope(KAUTH_SCOPE_FILEOP, &_ff_kauth_callback_internal, NULL);
 
     return true;
 }
@@ -725,7 +738,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
         if (ptr->pid == pid && ptr->path[0]) {
             strncpy(proc_path, ptr->path, PATH_MAX-1);
             strncpy(proc_name, ptr->name, sizeof(proc_name)-1);
-            // IOLog("ff_vnode_check_open: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
+            IOLog("ff_vnode_check_oper: pid_info lookup pid %d path %s assc_pid %d name %s\n", pid, proc_path, assc_pid, proc_name);
             break;
         }
         ptr = ptr->next;
@@ -745,6 +758,11 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     }
     
     IOLockUnlock(lock);
+    
+    /* forked procs have the path in the associated pid from ff_cred_label_associate_fork */
+    if (proc_path[0] == 0 && parent_path[0] && assc_pid == ppid) {
+        bcopy(parent_path, proc_path, PATH_MAX);
+    }
     
     /* process hierarchy, consolidated by tracking posix_spawn here, we add "via <someprocess>" */
     // IOLog("pid %d assc_pid %d path %s parent %s\n", pid, assc_pid, proc_path, parent_path);
@@ -1057,6 +1075,7 @@ int com_zdziarski_driver_FlockFlock::ff_kauth_callback(kauth_cred_t credential, 
     
     houseKeeping(); /* you want clean towel? */
     
+    IOLog("ff_kauth_callback: pid %d ppid %d path %s\n", pid, ppid, proc_path);
     ff_shared_exec_callback(pid, ppid, uid, gid, tid, proc_path);
     return KAUTH_RESULT_DEFER;
 }
@@ -1421,6 +1440,9 @@ void com_zdziarski_driver_FlockFlock::stop(IOService *provider)
     
     stopPersistence();
     kauth_unlisten_scope(kauthListener);
+    
+    thread_terminate(kauth_thread);
+    thread_deallocate(kauth_thread);
     
     if (active == true) {
         stopFilter(skey_a);

@@ -167,6 +167,7 @@ FUTURE PLANS
   editing capabilities (to avoid having to boot into recovery mode)
 - Implement activity logging
 - Richer popup screen to support more configurations
+- A simple mode for novice users
 
 FAQ
 
@@ -250,3 +251,5 @@ CHANGELOG
         Tweaks to persistence
 0.0.20* More improvements to persistence and stability
 	Fixed some locking issues in persistence mode
+0.0.21	Put kauth loop into a separate thread to get path before check_oper
+	    result: better identification of forked processes

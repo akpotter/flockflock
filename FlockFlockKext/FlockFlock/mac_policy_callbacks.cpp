@@ -8,6 +8,7 @@
 
 #include "FlockFlock.hpp"
 #include "mac_policy_callbacks.h"
+#include "FlockFlockClientShared.h"
 
 extern OSObject *com_zdziarski_driver_FlockFlock_provider;
 
