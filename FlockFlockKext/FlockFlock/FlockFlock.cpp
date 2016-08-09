@@ -13,7 +13,7 @@
 #define super IOService
 OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
-#define IOLog(...)
+// #define IOLog(...)
 
 /* mac policy callouts have to be done in C land, so we store a singleton
  * of our driver instance and call back into it later on when the policy 
@@ -135,7 +135,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
         .mpc_labelname_count = 0,
         .mpc_ops             = &persistenceOps,
         .mpc_loadtime_flags  =
-#ifdef PERSISTENCE
+#ifdef HARD_PERSISTENCE
         0, /* disable MPC_LOADTIME_FLAG_UNLOADOK to prevent unloading
             *
             * NOTE: setting this to 0 CAUSES A KERNEL PANIC AND REBOOT if the module is
@@ -677,7 +677,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     int pid = proc_selfpid();
     int ppid = proc_selfppid();
     struct pid_info *ptr;
-    int agentPID, daemonPID;
+    int agentPID, daemonRootPID;
     pid_t assc_pid = 0;
     
     /* if we want granularity based on threads, we can use the thread id, but
@@ -707,9 +707,9 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     
     IOLockLock(lock);
     agentPID = userAgentPID;
-    daemonPID = daemonPID;
+    daemonRootPID = daemonPID;
     IOLockUnlock(lock);
-    if (agentPID == pid || daemonPID == pid) {  /* friendlies */
+    if (agentPID == pid || daemonRootPID == pid) {  /* friendlies */
         return 0;
     }
     
@@ -929,7 +929,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_
         return EACCES;
     }
     
-    IOLog("FlockFlock::ff_vnode_check_oper: ask oper %d of %s by pid %d (%s) wht %d blk %d\n", query->operation, query->path, query->pid, query->process_name, whitelisted, blacklisted);
+    IOLog("FlockFlock::ff_vnode_check_oper: ask oper %d of %s by pid %d (%s) wht %d blk %d daemon %d\n", query->operation, query->path, query->pid, query->process_name, whitelisted, blacklisted, daemonPID);
     
     return EAUTH;
 }

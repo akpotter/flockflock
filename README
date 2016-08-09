@@ -140,15 +140,20 @@ will cause a kernel panic and subsequent reboot. Its data files and core
 files are protected from modification, and its processes are protected 
 from being killed. The goal of FlockFlock's persistence routines are to
 provide a protected execution environment for FlockFlock to the point
-where one would need to gain kernel-level code execution to disable it.
-At that point,  you've got bigger problems.
+where one would need to gain kernel-level code execution to disable it,
+and malware that can gain kernel privileges would need to attack FlockFlock.
+At that point,  you've got bigger problems... but it certainly does up the
+ante for malware.
 
 The user interface has a convenient menu option to disable FlockFlock so
 that it can be removed or upgraded without booting into recovery mode. This
 requires user interaction, providing a reasonable compromise between
 security and usability.
 
-NOTE: Persistence is disabled for alpha versions
+NOTE: Persistence is disabled for alpha versions, except for specific
+    builds labeled "persistence"; however, these builds will still allow
+    the kernel module to be unloaded in the event of a problem. It will,
+    however notify the user.
 
 COMPATIBILITY
 
@@ -254,3 +259,4 @@ CHANGELOG
 0.0.21  Put kauth loop into a separate thread to get path before check_oper
 0.0.22* Improved spawn tracking, trimmed display name of .app packages 
 	Turned off heavy debug logging for performance
+0.0.23* Fixed issues with freezing due to not recognizing daemon as friendly

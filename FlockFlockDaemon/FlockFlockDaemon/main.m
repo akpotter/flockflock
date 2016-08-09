@@ -259,7 +259,7 @@ int startFilter()
 {
     LOG("starting filter");
     kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestStartFilter, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL);
-    if (kr != KERN_SUCCESS) {
+    if (kr == KERN_SUCCESS) {
         LOG("filter started successfully");
     } else {
         LOG("error %d occurred while attempting to start filter", kr);
@@ -303,7 +303,6 @@ int commitNewRuleToDisk(struct _FlockFlockClientPolicy *rule)
     struct stat s;
     FILE *file;
     int e;
-    
     
     consoleUserName = SCDynamicStoreCopyConsoleUser(NULL, &uid, &gid);
     
@@ -630,7 +629,6 @@ int promptUserForPermission(struct policy_query *query)
     return EACCES;
 }
 
-
 void *handlePolicyQuery(void *ptr)
 {
     struct policy_query_msg *message = ptr;
@@ -645,14 +643,13 @@ void *handlePolicyQuery(void *ptr)
     response.response_type = message->query_type;
     response.response = promptUserForPermission(&message->query);
     memcpy(&response.skey, g_skey, SKEY_LEN);
-    
+    pthread_mutex_unlock(&g_promptLock);
+
     pthread_mutex_lock(&g_sharedLock);
     IOConnectCallMethod(g_driverConnection, kFlockFlockRequestPolicyResponse, NULL, 0, &response, sizeof(struct policy_response), NULL, NULL, NULL, NULL);
     pthread_mutex_unlock(&g_sharedLock);
-    pthread_mutex_unlock(&g_promptLock);
     
     free(ptr);
-    pthread_exit(0);
     return(NULL);
 }
 
@@ -722,7 +719,6 @@ void *authenticateAndProgramModule(void *ptr) {
         notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
         CFUserNotificationReceiveResponse(notification, 0, NULL);
         LOG("reboot required");
-        pthread_exit(0);
         return NULL;
     }
     
@@ -749,7 +745,6 @@ void *authenticateAndProgramModule(void *ptr) {
         LOG("starting filter");
         startFilter();
     }
-    pthread_exit(0);
     return NULL;
 }
 
@@ -832,6 +827,7 @@ int main(int argc, char *argv[]) {
 #ifdef PERSISTENCE
     ptrace(PT_DENY_ATTACH, 0, 0, 0);
 #endif
+
     tcgetattr( STDIN_FILENO, &oldt);
     newt = oldt;
     newt.c_lflag &= ~(ICANON);

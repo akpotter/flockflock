@@ -200,8 +200,8 @@ void *authenticateAndProgramModule(void *ptr) {
             kCFUserNotificationAlertMessageKey,
         };
         const void* values[] = {
-            CFSTR("Critical Failure, Reboot Required"),
-            CFSTR("FlockFlock has encountered a critical failure and a reboot is required. Please reboot your system to reinitialize FlockFlock.")
+            CFSTR("Cannot Connect to FlockFlock"),
+            CFSTR("The user agent is unable to connect to FlockFlock. The status menu cannot be displayed.")
         };
         CFDictionaryRef parameters = CFDictionaryCreate(0, keys, values,sizeof(keys)/sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         notification = CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationStopAlertLevel, NULL, parameters);
