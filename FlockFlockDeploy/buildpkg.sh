@@ -9,9 +9,10 @@ then
 fi
 IDENTITY="Jonathan Zdziarski"
 
-# rm -rf ~/Library/Developer/Xcode/DerivedData/
+pkgbuild --analyze --root root component.plist
+plutil -replace BundleIsRelocatable -bool false component.plist
 
-pkgbuild --root `pwd`/root --identifier com.zdziarski.FlockFlock --identifier com.zdziarski.FlockFlockUserAgent --identifier com.zdziarski.FlockFlockDaemon --version $BUILD --ownership recommended --install-location / --sign "$IDENTITY" FlockFlock.pkg
+pkgbuild --root root --component-plist component.plist --identifier com.zdziarski.FlockFlock --identifier com.zdziarski.FlockFlockUserAgent --identifier com.zdziarski.FlockFlockDaemon --version $BUILD --ownership recommended --install-location / --sign "$IDENTITY" FlockFlock.pkg
 
 productbuild --synthesize --product requirements.plist --package FlockFlock.pkg distribution.plist
 
@@ -23,4 +24,4 @@ sed -i "" -e 's/<\/installer-gui-script>/<license mime-type=\"application\/rtf\"
 productbuild --sign "$IDENTITY" --distribution distribution.plist --resources . --package-path FlockFlock.pkg FlockFlock-$BUILD.pkg
 rm -f FlockFlock.pkg
 rm -f distribution.plist
-
+rm -f component.plist
