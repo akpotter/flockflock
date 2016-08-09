@@ -155,6 +155,34 @@ NOTE: Persistence is disabled for alpha versions, except for specific
     the kernel module to be unloaded in the event of a problem. It will,
     however notify the user.
 
+DISABLING PERSISTENCE
+
+To disable persistence, allowing for upgrades or removal, simply select
+"Disable FlockFlock" from the FlockFlock status bar menu. This is the
+preferred way to disable it, and allows for easy upgrades.
+
+As always is the case with alpha/beta software, things can go wrong, so
+I've left the ability to unload the kernel module open in all alpha
+persistence builds, so you won't have to go into recovery mode (usually)
+to remove or change the software is something goes wrong. If you find
+things are bogging down or experiencing other problems, and you can't
+get to the FlockFlock menu to disable it, you can do the following:
+
+sudo kextunload /Library/Extensions/FlockFlock.kext
+launchctl unload /Library/LaunchAgents/com.zdziarski.FlockFlockUserAgent.plist
+sudo launchctl unload /Library/LaunchDaemons/com.zdziarski.FlockFlockDaemon.plist
+sudo kextunload /Library/Extensions/FlockFlock.kext
+
+You'll unload the kext twice, once to disengage the operational hooks,
+and a second time to disengage persistence after you've shut down the
+daemon and agent. The first will give you an error that it can't unload
+the kext, because of the agents, however it will have stopped the
+operational part of the code.
+
+If all else fails, use recovery mode to delete the kext from
+/Library/Extensions/FlockFlock.kext. I don't expect even an alpha should
+ever come to that, though.
+
 COMPATIBILITY
 
 Tested With:
