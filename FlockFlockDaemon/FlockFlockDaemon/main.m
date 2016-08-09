@@ -404,15 +404,12 @@ int promptUserForPermission(struct policy_query *query)
     if (p) {
         char *via = p+5;
         p[0] = 0;
-        LOG("VIA: %s", via);
         
         if (strcasestr(via, ".app"))
         {
-            LOG("HERE!");
             char n[PATH_MAX];
             strncpy(n, via, PATH_MAX);
             free(appPath);
-            LOG("COPIED %s", n);
             appPath = strdup(n);
         }
     }
