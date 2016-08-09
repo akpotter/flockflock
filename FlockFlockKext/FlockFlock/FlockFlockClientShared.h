@@ -9,7 +9,7 @@
 #ifndef FlockFlockClientShared_h
 #define FlockFlockClientShared_h
 
-#define FLOCKFLOCK_VERSION  "alpha_0.0.20"
+#define FLOCKFLOCK_VERSION  "alpha_0.0.21"
 
 #define DRIVER "com_zdziarski_driver_FlockFlock"
 #define SKEY_LEN 32

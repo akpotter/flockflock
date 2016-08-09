@@ -249,7 +249,7 @@ CHANGELOG
 	Removed significant logging overhead
 0.0.19  Added FlockFlockDaemon, moved load-time and policy code into it
         Tweaks to persistence
-0.0.20* More improvements to persistence and stability
+0.0.20  More improvements to persistence and stability
 	Fixed some locking issues in persistence mode
-0.0.21	Put kauth loop into a separate thread to get path before check_oper
+0.0.21* Put kauth loop into a separate thread to get path before check_oper
 	    result: better identification of forked processes

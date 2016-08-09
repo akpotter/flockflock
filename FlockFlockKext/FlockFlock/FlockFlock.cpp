@@ -761,7 +761,7 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     
     /* forked procs have the path in the associated pid from ff_cred_label_associate_fork */
     if (proc_path[0] == 0 && parent_path[0] && assc_pid == ppid) {
-        bcopy(parent_path, proc_path, PATH_MAX);
+        strncpy(proc_path, parent_path, PATH_MAX);
     }
     
     /* process hierarchy, consolidated by tracking posix_spawn here, we add "via <someprocess>" */
