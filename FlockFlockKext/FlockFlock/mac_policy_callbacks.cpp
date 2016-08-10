@@ -52,8 +52,6 @@ static int _ff_eval_vnode(struct vnode *vp)
             ret = EACCES;
         else if (!strncmp(target_path, LAUNCHD_KMOD, strlen(LAUNCHD_KMOD)))
             ret = EACCES;
-        else if (!strncmp(target_path + (target_len - strlen(CONFIG)), CONFIG, strlen(CONFIG)))
-            ret = EACCES;
     }
     
     if (ret == EACCES) {
