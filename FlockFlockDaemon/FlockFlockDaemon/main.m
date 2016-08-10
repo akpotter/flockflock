@@ -74,10 +74,8 @@ enum FlockFlockPolicyClass get_class_by_name(const char *name) {
         return kFlockFlockPolicyClassWhitelistAllMatching;
     if (!strcmp(name, "deny"))
         return kFlockFlockPolicyClassBlacklistAllMatching;
-    if (!strcmp(name, "allow!"))
-        return kFlockFlockPolicyClassWhitelistAllNotMatching;
-    if (!strcmp(name, "deny!"))
-        return kFlockFlockPolicyClassBlacklistAllNotMatching;
+    if (!strcmp(name, "watch"))
+        return kFlockFlockPolicyClassWatch;
     return kFlockFlockPolicyClassCount;
 }
 
@@ -154,8 +152,9 @@ int loadConfigurationFile(const char *config_path, uid_t uid, bool is_default)
         char *path = strtok(NULL, "\"");
         char *pname = strtok(NULL, "\"");
         pname = strtok(NULL, "\"\n");
+        char *ops = strtok(NULL, "\"\n");
         
-        LOG("parsing rule: class %s type %s path \"%s\" process name \"%s\" uid %d", class, type, path, pname, uid);
+        LOG("parsing rule: class %s type %s path \"%s\" process name \"%s\" uid %d operations %s", class, type, path, pname, uid, ops);
         
         rule.ruleClass = get_class_by_name(class);
         rule.ruleType = get_type_by_name(type);
@@ -199,12 +198,41 @@ int loadConfigurationFile(const char *config_path, uid_t uid, bool is_default)
         rule.temporaryPid = 0;
         rule.temporaryRule = 0;
         
+        if (ops == NULL || ops[0] == 0) {
+            rule.operations = FF_FILEOP_READ | FF_FILEOP_WRITE | FF_FILEOP_CREATE;
+        } else {
+            rule.operations = 0;
+            int i;
+            
+            for(i = 0; i < strlen(ops); ++i) {
+                switch(ops[i]) {
+                    case('r'):
+                    case('R'):
+                        rule.operations |= FF_FILEOP_READ;
+                        break;
+                    case('w'):
+                    case('W'):
+                        rule.operations |= FF_FILEOP_WRITE;
+                        break;
+                    case('c'):
+                    case('C'):
+                        rule.operations |= FF_FILEOP_CREATE;
+                        break;
+                    default:
+                        LOG("invalid file operation '%c'", ops[i]);
+                        break;
+                }
+            }
+            if (rule.operations == 0)
+                rule.operations = FF_FILEOP_READ | FF_FILEOP_WRITE | FF_FILEOP_CREATE;
+        }
+        
         LOG("class: %d", get_class_by_name(class));
         LOG("type : %d", get_type_by_name(type));
-        LOG("path : %s", rule.rulePath);
-        LOG("proc : %s (%d)", rule.processName, (int)strlen(rule.processName));
-        LOG("temp : %d", rule.temporaryRule);
+        LOG("path : %s", (rule.rulePath[0]) ? "any" : rule.rulePath);
+        LOG("proc : %s (%d)", (rule.processName[0]) ? "any" : rule.processName, (int)strlen(rule.processName));
         LOG("uid  : %d", uid);
+        LOG("ops  : %s [%d]", (ops) ? ops : "(null)", rule.operations);
         
         memcpy(&rule.skey, g_skey, SKEY_LEN);
         kern_return_t kr = IOConnectCallMethod(g_driverConnection, kFlockFlockRequestAddClientRule, NULL, 0, &rule, sizeof(rule), NULL, NULL, NULL, NULL);
@@ -368,21 +396,18 @@ int promptUserForPermission(struct policy_query *query)
     proc_pidpath(ppid, pproc_path, PATH_MAX);
     
     switch(query->operation) {
-        case(FF_FILEOP_OPEN):
-            strncpy(operation, "an access", sizeof(operation));
+        case(FF_FILEOP_READ):
+            strncpy(operation, "read", sizeof(operation));
             break;
         case(FF_FILEOP_WRITE):
-            strncpy(operation, "a write", sizeof(operation));
+            strncpy(operation, "write", sizeof(operation));
             break;
-        case(FF_FILEOP_DELETE):
-            strncpy(operation, "a delete", sizeof(operation));
-            break;
-        case(FF_FILEOP_TRUNCATE):
-            strncpy(operation, "a truncate", sizeof(operation));
+        case(FF_FILEOP_CREATE):
+            strncpy(operation, "create", sizeof(operation));
             break;
     }
-    
-    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected %s attempt to the file:\n%s\n\nApplication:\n%s (%d)\n(%s)\n\nParent:\n%s (%d)\n", operation,
+
+    snprintf(alert_message, sizeof(alert_message), "FlockFlock detected a %s attempt to the file:\n%s\n\nApplication:\n%s (%d)\n(%s)\n\nParent:\n%s (%d)\n", operation,
              query->path, proc_path, query->pid, proc_detail, pproc_path, ppid);
     LOG("%s", alert_message);
     alert_str = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, strdup(alert_message), kCFStringEncodingMacRoman, kCFAllocatorDefault);
@@ -594,6 +619,8 @@ int promptUserForPermission(struct policy_query *query)
         rule.temporaryRule = false;
         rule.temporaryPid = 0;
     }
+    
+    rule.operations = FF_FILEOP_READ | FF_FILEOP_WRITE | FF_FILEOP_CREATE;
     
     CFRelease(parameters);
     CFRelease(popup_options);

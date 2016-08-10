@@ -6,10 +6,10 @@
 ;
 ; syntax: 
 ;     policy_class
+;         watch    specify watch directories and operations (default: /Users/)
+;                  anything that is not watched is automatically whitelisted
 ;         allow    allow any read operations matching this policy
-;         allow!   allow any read operations not matching this policy
 ;         deny     deny any read operations matching this policy
-;         deny!    deny any read operations not matching this policy
 ;
 ;     policy_type
 ;         prefix    policy applies to file/dirs matching prefix 
@@ -31,47 +31,61 @@
 ;         must be encapsulated in quotes to accommodate spaces
 ;         use "any" to apply to all processes
 ;         use a slash at the end to indicate a path
+;
+;     operation
+;         specify what operations should match this rule. if whitelisting a
+;         path, you may choose to allow only read operations. if defining a 
+;         for for a specific application, you may choose to allow the app 
+;         read and write access. valid options are combinations of: rwc
+;         read (r), write (w), create(c)
+;
+;         note: it's a good idea to let apps create their own files as
+;             needed, unless you've special reason to restrict certain
+;             folders from file creation (such as /Library/LaunchDaemons/)
 
-; allow access to any files outside of /Users
-allow! prefix "/Users/" "any"
+; initial watch rules; these are the folders and operations we want to watch
+watch prefix "/Users/" "any" rw
+watch prefix "/Library/LaunchDaemons/" "any" wc
+watch prefix "/Library/LaunchAgents/" "any" wc
+watch prefix "/Library/Extensions/" "any" wc
 
-; allow preferences files to be read
-allow suffix ".plist" "any"
-allow suffix ".bundle" "any"
+; allow all preferences files to be read
+allow suffix ".plist" "any" r
+allow suffix ".bundle" "any" r
 
-; trust all system components (same mechanism protects this area with sip)
-allow path "any" "/System/Library/"
-allow path "any" "/usr/libexec/"
-allow path "any" "/usr/sbin/"
+; allow all system components to read and write (SIP protects these areas)
+allow path "any" "/System/Library/" rwc
+allow path "any" "/usr/libexec/" rwc
+allow path "any" "/usr/sbin/" rwc
 
 ; let unix processes read certain files
-allow path "$HOME/.profile" "/bin/bash"
-allow path "$HOME/.CFUserTextEncoding" "any"
+allow path "$HOME/.profile" "/bin/bash" r
+allow path "$HOME/.CFUserTextEncoding" "any" r
 
-; many processes map libs into memory that store things in the keychain
-allow suffix ".keychain-db" "any"
-allow suffix "/login.keychain" "any"
+; many apps map libs into memory that store things in the keychain
+allow suffix ".keychain-db" "any" rw
+allow suffix "/login.keychain" "any" rw
 
 ; vim
-allow path "$HOME/.vimrc" "/usr/bin/vim"
-allow path "$HOME/.viminfo" "/usr/bin/vim"
+allow path "$HOME/.vimrc" "/usr/bin/vim" r
+allow path "$HOME/.viminfo" "/usr/bin/vim" r
 
 ; lots of things read bash history
-allow path "$HOME/.bash_history" "any"
-allow prefix "$HOME/.bash_sessions/" "any"
+allow path "$HOME/.bash_history" "any" rwc
+allow prefix "$HOME/.bash_sessions/" "any" rwc
 
 ; common user apps
-allow path "$HOME/Library/Caches/com.apple.preferencepanes.cache" "/Applications/System Preferences.app/"
+allow path "$HOME/Library/Caches/com.apple.preferencepanes.cache" "/Applications/System Preferences.app/" rw
 
 ; common user paths
-allow prefix "$HOME/Library/Logs" "any"
-allow prefix "$HOME/Library/Preferences" "any"
+allow prefix "$HOME/Library/Logs" "any" rwc
+allow prefix "$HOME/Library/Preferences" "any" rwc
 
 ; vim
-allow suffix ".swpx" "/usr/bin/vim"
-allow suffix ".swp" "/usr/bin/vim"
+allow suffix ".swpx" "/usr/bin/vim" rwc
+allow suffix ".swp" "/usr/bin/vim" rwc
 
 ; .DS_Store files (ugh)
-allow suffix "/.DS_Store" "any"
-allow suffix "/.localized" "any"
+allow suffix "/.DS_Store" "any" rwc
+allow suffix "/.localized" "any" rwc
 

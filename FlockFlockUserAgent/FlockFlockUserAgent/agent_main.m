@@ -60,28 +60,6 @@ pthread_mutex_t g_sharedLock, g_promptLock;
 unsigned char g_skey[SKEY_LEN];
 int g_lastFilterState = -1;
 
-enum FlockFlockPolicyClass get_class_by_name(const char *name) {
-    if (!strcmp(name, "allow"))
-        return kFlockFlockPolicyClassWhitelistAllMatching;
-    if (!strcmp(name, "deny"))
-        return kFlockFlockPolicyClassBlacklistAllMatching;
-    if (!strcmp(name, "allow!"))
-        return kFlockFlockPolicyClassWhitelistAllNotMatching;
-    if (!strcmp(name, "deny!"))
-        return kFlockFlockPolicyClassBlacklistAllNotMatching;
-    return kFlockFlockPolicyClassCount;
-}
-
-enum FlockFlockPolicyType get_type_by_name(const char *name) {
-    if (!strcmp(name, "prefix"))
-        return kFlockFlockPolicyTypePathPrefix;
-    if (!strcmp(name, "path"))
-        return kFlockFlockPolicyTypeFilePath;
-    if (!strcmp(name, "suffix"))
-        return kFlockFlockPolicyTypePathSuffix;
-    return kFlockFlockPolicyTypeCount;
-}
-
 void displayAlert(const char *header, const char *message)
 {
     CFUserNotificationRef notification;

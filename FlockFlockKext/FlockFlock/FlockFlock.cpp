@@ -13,8 +13,6 @@
 #define super IOService
 OSDefineMetaClassAndStructors(com_zdziarski_driver_FlockFlock, IOService);
 
-#define IOLog(...)
-
 /* mac policy callouts have to be done in C land, so we store a singleton
  * of our driver instance and call back into it later on when the policy 
  * receives C-land callbacks */
@@ -118,6 +116,7 @@ bool com_zdziarski_driver_FlockFlock::startPersistence()
         .mpo_vnode_check_unlink = _ff_vnode_check_unlink_internal,
         .mpo_vnode_notify_create = _ff_vnode_notify_create_internal,
         .mpo_vnode_check_rename = _ff_check_vnode_rename_internal,
+        .mpo_vnode_check_create = _ff_vnode_check_create_internal,
 
         // .mpo_vnode_check_exec = _ff_vnode_check_exec_internal, /* replaced by kauth */
 #ifdef PERSISTENCE
@@ -686,24 +685,27 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
      * consolidate back to the main thread */
     /* uint64_t tid = thread_tid(current_thread()); */
     
-    if (vp == NULL)             /* something happened */
+    if (vp == NULL)                                     /* something happened */
         return 0;
-    if (vnode_isdir(vp))        /* we only work with files */
+    if (vnode_isdir(vp) && operation == FF_FILEOP_READ) /* read any directory */
         return 0;
-    if (policyRoot == NULL)     /* no rules programmed yet, agent setup */
+    if (policyRoot == NULL)                             /* no rules programmed yet, agent setup */
         return 0;
     
     /* check the create cache on delete or modify operations, to see if the pid created the file it's
      * trying to change */
-    if (operation != FF_FILEOP_OPEN) {
+    if (operation == FF_FILEOP_WRITE) {
         char path[PATH_MAX];
         bool exists;
-        
+
         if (! vn_getpath(vp, path, &buflen))
             path[PATH_MAX-1] = 0;
+        
         exists = ff_create_cache_lookup(pid, path);
-        if (exists == true)
+        if (exists == true) {
+            // IOLog("FlockFlock::ff_vnode_check_oper allowing write of path pid %d created on its own %s", pid, path);
             return 0;
+        }
     }
     
     IOLockLock(lock);
@@ -723,6 +725,9 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
     query->operation = operation;
     if (! vn_getpath(vp, query->path, &buflen))
         query->path[PATH_MAX-1] = 0;
+    if (operation == FF_FILEOP_CREATE) { /* vnode passed with mpo_vnode_check_create doesn't include trailing / */
+        strncat(query->path, "/", PATH_MAX-1);
+    }
     
     assc_pid = ff_cred_label_associate_by_pid(pid);
     if (assc_pid)
@@ -834,10 +839,10 @@ int com_zdziarski_driver_FlockFlock::ff_vnode_check_oper(kauth_cred_t cred, stru
 
 int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_query *query)
 {
-    bool blacklisted = false, whitelisted = false;
+    bool blacklisted = false, whitelisted = false, watched = false;
     int path_len = (int)strlen(query->path);
     long suffix_pos = 0;
-    
+
     IOLockLock(lock);
     FlockFlockPolicy rule = policyRoot;
     while(rule) {
@@ -864,7 +869,7 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_
         if (rpath_len) {
             switch(rule->data.ruleType) {
                 case(kFlockFlockPolicyTypePathPrefix):
-                    if (strncmp(rule->data.rulePath, query->path, rpath_len))
+                    if (strncmp(query->path, rule->data.rulePath, rpath_len))
                         match = false;
                     break;
                 case(kFlockFlockPolicyTypeFilePath):
@@ -895,32 +900,28 @@ int com_zdziarski_driver_FlockFlock::ff_evaluate_vnode_check_oper(struct policy_
             }
         }
         
+        if (match == true && (rule->data.operations & query->operation))
+            watched = true;
+        
         switch(rule->data.ruleClass) {
             case(kFlockFlockPolicyClassBlacklistAllMatching):
-                if (match)
+                if (match && (rule->data.operations & query->operation))
                     blacklisted = true;
                 break;
             case(kFlockFlockPolicyClassWhitelistAllMatching):
-                if (match)
+                if (match && (rule->data.operations & query->operation))
                     whitelisted = true;
                 break;
-            case(kFlockFlockPolicyClassBlacklistAllNotMatching):
-                if (! match)
-                    blacklisted = true;
-                break;
-            case(kFlockFlockPolicyClassWhitelistAllNotMatching):
-                if (! match)
-                    whitelisted = true;
+            case(kFlockFlockPolicyClassWatch):
             default:
                 break;
-                
         }
-        
+
         rule = rule->next;
     }
     IOLockUnlock(lock);
     
-    if (whitelisted == true)
+    if (watched == false || whitelisted == true)
     {
         // IOLog("FlockFlock::ff_vnode_check_oper: allow oper %d of %s by pid %d (%s) wht %d blk %d\n", query->operation, query->path, query->pid, query->process_name, whitelisted, blacklisted);
         

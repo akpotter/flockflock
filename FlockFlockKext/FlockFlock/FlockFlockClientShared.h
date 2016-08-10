@@ -9,16 +9,16 @@
 #ifndef FlockFlockClientShared_h
 #define FlockFlockClientShared_h
 
-#define PERSISTENCE
-#define FLOCKFLOCK_VERSION  "alpha_0.0.24_persistence"
+//#define PERSISTENCE
+#define IOLog(...)
+#define FLOCKFLOCK_VERSION  "alpha_0.0.25"
 
 #define DRIVER "com_zdziarski_driver_FlockFlock"
 #define SKEY_LEN 32
 
-#define FF_FILEOP_OPEN      0x00
-#define FF_FILEOP_DELETE    0x01
-#define FF_FILEOP_TRUNCATE  0x02
-#define FF_FILEOP_WRITE     0x03
+#define FF_FILEOP_READ      0x01
+#define FF_FILEOP_WRITE     0x02
+#define FF_FILEOP_CREATE    0x04
 
 enum FlockFlockRequestCode {
     kFlockFlockRequestClearConfiguration,
@@ -44,8 +44,7 @@ enum FlockFlockPolicyType {
 enum FlockFlockPolicyClass {
     kFlockFlockPolicyClassWhitelistAllMatching,
     kFlockFlockPolicyClassBlacklistAllMatching,
-    kFlockFlockPolicyClassWhitelistAllNotMatching,
-    kFlockFlockPolicyClassBlacklistAllNotMatching,
+    kFlockFlockPolicyClassWatch,
     
     kFlockFlockPolicyClassCount
 };
@@ -57,6 +56,7 @@ typedef struct _FlockFlockClientPolicy {
     char rulePath[PATH_MAX];
     int32_t temporaryRule;
     int32_t temporaryPid;
+    int32_t operations;
     char skey[SKEY_LEN];
 } *FlockFlockClientPolicy;
 
@@ -76,7 +76,7 @@ struct policy_query {
     char path[PATH_MAX];
     char process_name[PATH_MAX];
     uint32_t security_token;
-    int operation;
+    int32_t operation;
 };
 
 struct policy_response {
