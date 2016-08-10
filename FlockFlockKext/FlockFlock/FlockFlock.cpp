@@ -579,25 +579,40 @@ int com_zdziarski_driver_FlockFlock::genSecurityKey(bool is_daemon) {
  * the instance method of the class, or return an instance variable. */
 
 bool com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(OSObject *provider) {
+    bool active;
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
-    return me->filterActive;
+    IOLockLock(me->lock);
+    active = me->filterActive;
+    IOLockUnlock(me->lock);
+    return active;
 }
 
 int com_zdziarski_driver_FlockFlock::ff_get_agent_pid_static(OSObject *provider) {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
-    return me->userAgentPID;
+    pid_t pid;
+    IOLockLock(me->lock);
+    pid = me->userAgentPID;
+    IOLockUnlock(me->lock);
+    return pid;
 }
 
 int com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(OSObject *provider) {
+    pid_t pid;
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
-    return me->daemonPID;
+    IOLockLock(me->lock);
+    pid = me->daemonPID;
+    IOLockUnlock(me->lock);
+    return pid;
 }
 
 bool com_zdziarski_driver_FlockFlock::ff_should_persist(OSObject *provider) {
     com_zdziarski_driver_FlockFlock *me = (com_zdziarski_driver_FlockFlock *)provider;
-    if (me->filterActive == false && me->filterInitialized == true)
+    IOLockLock(me->lock);
+    if (me->filterActive == false && me->filterInitialized == true) {
+        IOLockUnlock(me->lock);
         return false;
-    
+    }
+    IOLockUnlock(me->lock);
     return true;
 }
 
