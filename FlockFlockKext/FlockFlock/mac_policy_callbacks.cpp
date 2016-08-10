@@ -6,6 +6,8 @@
 //  Copyright © 2016 Jonathan Zdziarski. All rights reserved.
 //
 
+#include <i386/types.h>
+#include <sys/fcntl.h>
 #include "FlockFlock.hpp"
 #include "mac_policy_callbacks.h"
 #include "FlockFlockClientShared.h"
@@ -103,6 +105,20 @@ int _ff_vnode_check_signal_internal(kauth_cred_t cred, struct proc *proc, int si
 
 int _ff_vnode_check_open_internal(kauth_cred_t cred, struct vnode *vp, struct label *label, int acc_mode)
 {
+    if ((acc_mode & O_TRUNC)) {
+        int eval;
+        if (proc_selfpid() == com_zdziarski_driver_FlockFlock::ff_get_daemon_pid_static(com_zdziarski_driver_FlockFlock_provider))
+        {
+            return 0;
+        }
+        eval = _ff_eval_vnode(vp);
+        
+        if (eval || com_zdziarski_driver_FlockFlock::ff_is_filter_active_static(com_zdziarski_driver_FlockFlock_provider) == false)
+            return eval;
+
+        return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, acc_mode, FF_FILEOP_WRITE);
+    }
+    
     return com_zdziarski_driver_FlockFlock::ff_vnode_check_oper_static(com_zdziarski_driver_FlockFlock_provider, cred, vp, label, acc_mode, FF_FILEOP_READ);
 }
 

@@ -302,3 +302,4 @@ CHANGELOG
 	Added support for separation of operations (read, write create)
 	Added file operations (rwc) to .flockflockrc
 	NOTE: UI still grants either all or none to make it easy for user
+0.0.26	Modified open hook to eval persistence and write rules for O_TRUNC
