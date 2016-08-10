@@ -44,8 +44,9 @@ For Developers:
 FlockFlock is a programmable macOS kernel extension that enforces file 
 access and modification policies using macOS's kernel-level MAC 
 (mandatory access control) framework.  The MAC framework began in 
-TrustedBSD and was later adopted into the Darwin kernel; it allows 
-FlockFlock to intercept every file open/write/delete/rename call on
+TrustedBSD and was later adopted into the Darwin kernel; it's used by Apple
+to perform a number of tasks related to sandboxing on macOS and iOS. It lets
+FlockFlock intercept every file open/write/delete/rename call on
 the system and analyze it against a set of rules programmed into the kernel
 at boot time. Even if an attacker gets root on your system, the kernel
 module continues to enforce the user's rules, and even attempts to persist
