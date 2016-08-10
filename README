@@ -107,14 +107,13 @@ Start a Terminal (Utilities->Terminal) and type:
     csrutil enable --without kext; reboot
 
 After your system reboots, double click the FlockFlock.pkg file and follow 
-the installation process. A reboot is recommended after installation, but 
-not required.
+the installation process. A reboot will be required after installation.
 
 FIRST RUN
 
 When the system comes back up, FlockFlock should be active on your
 system, and you should start being prompted to grant file access
-permissions to various programs you might run.
+permissions to various programs you might run. 
 
 When first running your favorite applications for the first time,
 you'll be prompted to allow or deny access to specific files or folders.
@@ -122,11 +121,20 @@ This allows you to set up initial access rules. FlockFlock will remember
 your choices so it won't bother you again, unless you check the box
 "Forget after Restart".
 
+At first, you may get a lot of requests, one after the other; take a look at 
+the directory path dropdown and choose the best paths to allow each 
+application. For example, if an application is trying to access a file 
+inside of its cache folder, you'll probably want to give it permanent access 
+to its entire cache folder, rather than just that one file, so you're not 
+nagged again by requests for files in that folder.
+
 RULES EDITING
 
 For manual rules editing, edit the .flockflockrc file in your home
 directory. You will need to reboot in order for the changes to take effect,
-since they are programmed directly into the kernel.
+since they are programmed directly into the kernel. 
+
+NOTE: You'll need to temporarily disable FlockFlock to save your rules file.
 
 REMOVAL 
 
