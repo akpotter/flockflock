@@ -79,10 +79,13 @@ allow path "$HOME/.bash_history" "any" rwc
 allow path "$HOME/.lesshst" "any" rwc
 allow prefix "$HOME/.bash_sessions/" "any" rwc
 
-; common user paths
-allow prefix "$HOME/Library/Logs" "any" rwc
-allow prefix "$HOME/Library/Preferences" "any" rwc
-
 ; .DS_Store files (ugh)
 allow suffix "/.DS_Store" "any" rwc
 allow suffix "/.localized" "any" rwc
+
+; commonly accessed (innocuous) user folders
+allow prefix "$HOME/Library/Logs" "any" rwc 
+allow prefix "$HOME/Library/Preferences" "any" rwc 
+allow prefix "$HOME/Library/FontCollections/" "any" r
+allow prefix "$HOME/Library/Fonts/" "any" r
+allow prefix "$HOME/Library/ColorSync/Profiles/" "any" r
