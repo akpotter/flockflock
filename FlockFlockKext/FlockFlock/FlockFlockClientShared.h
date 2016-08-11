@@ -9,9 +9,9 @@
 #ifndef FlockFlockClientShared_h
 #define FlockFlockClientShared_h
 
-#define PERSISTENCE
+//#define PERSISTENCE
 #define IOLog(...)
-#define FLOCKFLOCK_VERSION  "alpha_0.0.26_persistence_unloadable"
+#define FLOCKFLOCK_VERSION  "alpha_0.0.26"
 
 #define DRIVER "com_zdziarski_driver_FlockFlock"
 #define SKEY_LEN 32

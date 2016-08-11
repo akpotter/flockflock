@@ -298,10 +298,10 @@ CHANGELOG
 	Turned off heavy debug logging for performance
 0.0.23  Fixed issues with freezing due to not recognizing daemon as friendly
 0.0.24  Added missing persistence hook mpo_vnode_check_rename_to 
-0.0.25* Changed "allow!" rule to "watch" to indicate a watched folder
+0.0.25  Changed "allow!" rule to "watch" to indicate a watched folder
 	Added support for separation of operations (read, write create)
 	Added file operations (rwc) to .flockflockrc
 	NOTE: UI still grants either all or none to make it easy for user
-0.0.26	Modified open hook to eval persistence and write rules for O_TRUNC
+0.0.26*	Modified open hook to eval persistence and write rules for O_TRUNC
 	Removed persistence for user .flockflockrc files, which are instead
 	    protected with a user prompt
