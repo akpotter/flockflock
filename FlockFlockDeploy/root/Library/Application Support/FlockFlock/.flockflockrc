@@ -48,6 +48,7 @@ watch prefix "/Users/" "any" rw
 watch prefix "/Library/LaunchDaemons/" "any" wc
 watch prefix "/Library/LaunchAgents/" "any" wc
 watch prefix "/Library/Extensions/" "any" wc
+watch prefix "$HOME/Library/LaunchAgents/" "any" wc
 
 ; allow all preferences files to be read
 allow suffix ".plist" "any" r
@@ -60,6 +61,7 @@ allow path "any" "/usr/sbin/" rwc
 
 ; let unix processes read certain files
 allow path "$HOME/.profile" "/bin/bash" r
+allow path "$HOME/.profile" "/bin/bash via /usr/bin/login" r
 allow path "$HOME/.CFUserTextEncoding" "any" r
 
 ; many apps map libs into memory that store things in the keychain
@@ -67,25 +69,20 @@ allow suffix ".keychain-db" "any" rw
 allow suffix "/login.keychain" "any" rw
 
 ; vim
-allow path "$HOME/.vimrc" "/usr/bin/vim" r
-allow path "$HOME/.viminfo" "/usr/bin/vim" r
+allow path "$HOME/.vimrc" "/usr/bin/vim via /bin/bash" r
+allow path "$HOME/.viminfo" "/usr/bin/vim via /bin/bash" r
+allow suffix ".swpx" "/usr/bin/vim" rwc
+allow suffix ".swp" "/usr/bin/vim" rwc
 
-; lots of things read bash history
+; lots of things talk to your history
 allow path "$HOME/.bash_history" "any" rwc
+allow path "$HOME/.lesshst" "any" rwc
 allow prefix "$HOME/.bash_sessions/" "any" rwc
-
-; common user apps
-allow path "$HOME/Library/Caches/com.apple.preferencepanes.cache" "/Applications/System Preferences.app/" rw
 
 ; common user paths
 allow prefix "$HOME/Library/Logs" "any" rwc
 allow prefix "$HOME/Library/Preferences" "any" rwc
 
-; vim
-allow suffix ".swpx" "/usr/bin/vim" rwc
-allow suffix ".swp" "/usr/bin/vim" rwc
-
 ; .DS_Store files (ugh)
 allow suffix "/.DS_Store" "any" rwc
 allow suffix "/.localized" "any" rwc
-
